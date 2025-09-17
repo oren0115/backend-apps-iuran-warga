@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends
 from app.models.schemas import (
-    UserResponse, FeeResponse, PaymentWithDetails, MessageResponse, 
+    UserResponse, FeeResponse, PaymentResponse, MessageResponse, 
     GenerateFeesRequest, NotificationResponse
 )
 from app.controllers.user_controller import UserController
@@ -36,20 +36,10 @@ async def get_all_fees(current_user = Depends(get_current_admin)):
     return await fee_controller.get_all_fees()
 
 # Payment Management
-@router.get("/payments", response_model=List[PaymentWithDetails])
-async def get_pending_payments(current_user = Depends(get_current_admin)):
-    """Get all pending payments with details (admin only)"""
-    return await payment_controller.get_pending_payments()
-
-@router.put("/payments/{payment_id}/approve", response_model=MessageResponse)
-async def approve_payment(payment_id: str, current_user = Depends(get_current_admin)):
-    """Approve a payment (admin only)"""
-    return await payment_controller.approve_payment(payment_id, current_user["id"])
-
-@router.put("/payments/{payment_id}/reject", response_model=MessageResponse)
-async def reject_payment(payment_id: str, current_user = Depends(get_current_admin)):
-    """Reject a payment (admin only)"""
-    return await payment_controller.reject_payment(payment_id)
+@router.get("/payments", response_model=List[PaymentResponse])
+async def get_all_payments(current_user = Depends(get_current_admin)):
+    """Get all payments (admin only)"""
+    return await payment_controller.get_all_payments()
 
 # Notification Management
 @router.post("/notifications/broadcast", response_model=MessageResponse)

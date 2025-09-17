@@ -1,12 +1,19 @@
 from fastapi import HTTPException, status
-from app.models.schemas import Payment, PaymentCreate, PaymentResponse, PaymentWithDetails, UserResponse, FeeResponse
+from app.models.schemas import (
+    Payment, PaymentCreate, PaymentResponse, PaymentWithDetails, 
+    UserResponse, FeeResponse, PaymentCreateResponse
+)
 from app.config.database import get_database
+from app.services.midtrans_service import MidtransService
 from datetime import datetime
 import uuid
 
 class PaymentController:
-    async def create_payment(self, payment_data: PaymentCreate, user_id: str) -> PaymentResponse:
-        """Create a new payment"""
+    def __init__(self):
+        self.midtrans_service = MidtransService()
+    
+    async def create_payment(self, payment_data: PaymentCreate, user_id: str, user_data: dict) -> PaymentCreateResponse:
+        """Create a new payment using Midtrans"""
         db = get_database()
         
         # Verify fee exists and belongs to user
@@ -28,22 +35,14 @@ class PaymentController:
                 detail="Pembayaran untuk tagihan ini sudah ada"
             )
         
-        # Create payment
-        payment_dict = payment_data.dict()
-        payment_dict["id"] = str(uuid.uuid4())
-        payment_dict["user_id"] = user_id
-        payment_dict["status"] = "Pending"
-        payment_dict["created_at"] = datetime.utcnow()
-        
-        await db.payments.insert_one(payment_dict)
-        
-        # Update fee status
-        await db.fees.update_one(
-            {"id": payment_data.fee_id},
-            {"$set": {"status": "Pending"}}
+        # Create payment using Midtrans
+        from app.models.schemas import MidtransPaymentRequest
+        midtrans_request = MidtransPaymentRequest(
+            fee_id=payment_data.fee_id,
+            payment_method=payment_data.payment_method
         )
         
-        return PaymentResponse(**payment_dict)
+        return await self.midtrans_service.create_payment(midtrans_request, user_id, user_data)
 
     async def get_user_payments(self, user_id: str) -> list[PaymentResponse]:
         """Get all payments for a specific user"""
@@ -75,71 +74,6 @@ class PaymentController:
         
         return result
 
-    async def approve_payment(self, payment_id: str, admin_id: str) -> dict:
-        """Approve a payment (admin only)"""
-        db = get_database()
-        
-        payment = await db.payments.find_one({"id": payment_id})
-        if not payment:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Pembayaran tidak ditemukan"
-            )
-        
-        if payment["status"] != "Pending":
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Pembayaran sudah diproses sebelumnya"
-            )
-        
-        # Update payment
-        await db.payments.update_one(
-            {"id": payment_id},
-            {"$set": {
-                "status": "Approved",
-                "approved_at": datetime.utcnow(),
-                "approved_by": admin_id
-            }}
-        )
-        
-        # Update fee
-        await db.fees.update_one(
-            {"id": payment["fee_id"]},
-            {"$set": {"status": "Lunas"}}
-        )
-        
-        return {"message": "Pembayaran berhasil disetujui"}
-
-    async def reject_payment(self, payment_id: str) -> dict:
-        """Reject a payment (admin only)"""
-        db = get_database()
-        
-        payment = await db.payments.find_one({"id": payment_id})
-        if not payment:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Pembayaran tidak ditemukan"
-            )
-        
-        if payment["status"] != "Pending":
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Pembayaran sudah diproses sebelumnya"
-            )
-        
-        # Update payment
-        await db.payments.update_one(
-            {"id": payment_id},
-            {"$set": {"status": "Rejected"}}
-        )
-        
-        # Update fee back to unpaid
-        await db.fees.update_one(
-            {"id": payment["fee_id"]},
-            {"$set": {"status": "Belum Bayar"}}
-        )
-        
-        return {"message": "Pembayaran ditolak"}
 
     async def get_all_payments(self) -> list[PaymentResponse]:
         """Get all payments (admin only)"""
@@ -147,3 +81,13 @@ class PaymentController:
         
         payments = await db.payments.find({}, {"_id": 0}).to_list(1000)
         return [PaymentResponse(**payment) for payment in payments]
+    
+    async def handle_midtrans_notification(self, notification_data: dict) -> dict:
+        """Handle Midtrans payment notification"""
+        from app.models.schemas import MidtransNotificationRequest
+        notification = MidtransNotificationRequest(**notification_data)
+        return await self.midtrans_service.handle_notification(notification)
+    
+    async def check_payment_status(self, transaction_id: str) -> dict:
+        """Check payment status from Midtrans"""
+        return await self.midtrans_service.check_payment_status(transaction_id)

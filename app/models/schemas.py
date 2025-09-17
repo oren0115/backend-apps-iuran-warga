@@ -54,11 +54,10 @@ class FeeResponse(FeeBase):
     due_date: datetime
     created_at: datetime
 
-# Payment Models
+# Payment Models (Midtrans Only)
 class PaymentBase(BaseModel):
     amount: int
-    method: str
-    bukti_transfer: Optional[str] = None
+    payment_method: str  # credit_card, bank_transfer, gopay, etc.
 
 class PaymentCreate(PaymentBase):
     fee_id: str
@@ -69,8 +68,16 @@ class Payment(PaymentBase):
     user_id: str
     status: str = "Pending"
     created_at: datetime = Field(default_factory=datetime.utcnow)
-    approved_at: Optional[datetime] = None
-    approved_by: Optional[str] = None
+    # Midtrans fields
+    transaction_id: Optional[str] = None
+    payment_token: Optional[str] = None
+    payment_url: Optional[str] = None
+    midtrans_status: Optional[str] = None
+    payment_type: Optional[str] = None
+    bank: Optional[str] = None
+    va_number: Optional[str] = None
+    expiry_time: Optional[datetime] = None
+    settled_at: Optional[datetime] = None
 
 class PaymentResponse(PaymentBase):
     id: str
@@ -78,8 +85,16 @@ class PaymentResponse(PaymentBase):
     user_id: str
     status: str
     created_at: datetime
-    approved_at: Optional[datetime] = None
-    approved_by: Optional[str] = None
+    # Midtrans fields
+    transaction_id: Optional[str] = None
+    payment_token: Optional[str] = None
+    payment_url: Optional[str] = None
+    midtrans_status: Optional[str] = None
+    payment_type: Optional[str] = None
+    bank: Optional[str] = None
+    va_number: Optional[str] = None
+    expiry_time: Optional[datetime] = None
+    settled_at: Optional[datetime] = None
 
 class PaymentWithDetails(PaymentResponse):
     user: Optional[UserResponse] = None
@@ -109,3 +124,30 @@ class MessageResponse(BaseModel):
 
 class GenerateFeesRequest(BaseModel):
     bulan: str
+
+# Midtrans specific models
+class MidtransPaymentRequest(BaseModel):
+    fee_id: str
+    payment_method: str  # credit_card, bank_transfer, gopay, etc.
+
+# Payment creation response
+class PaymentCreateResponse(BaseModel):
+    payment_id: str
+    transaction_id: str
+    payment_token: str
+    payment_url: str
+    expiry_time: datetime
+    payment_type: str
+    bank: Optional[str] = None
+    va_number: Optional[str] = None
+
+class MidtransNotificationRequest(BaseModel):
+    transaction_id: str
+    transaction_status: str
+    payment_type: str
+    order_id: str
+    gross_amount: str
+    fraud_status: Optional[str] = None
+    bank: Optional[str] = None
+    va_number: Optional[str] = None
+    signature_key: str
