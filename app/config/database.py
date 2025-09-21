@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 # Load environment variables from .env file
 ROOT_DIR = Path(__file__).resolve().parent.parent.parent
-load_dotenv(dotenv_path=ROOT_DIR / '.env')
+load_dotenv(dotenv_path=ROOT_DIR / '.env.development')
 
 class DatabaseManager:
     client: Optional[AsyncIOMotorClient] = None
