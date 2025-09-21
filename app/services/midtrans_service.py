@@ -18,6 +18,14 @@ class MidtransService:
         """Create payment transaction with Midtrans"""
         db = get_database()
         
+        # Check if Midtrans is properly configured
+        if not self.snap or not self.core_api:
+            logger.error("Midtrans not properly configured - missing API keys")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Midtrans tidak dikonfigurasi dengan benar. Silakan hubungi administrator."
+            )
+        
         # Verify fee exists and belongs to user
         fee = await db.fees.find_one({"id": payment_request.fee_id, "user_id": user_id})
         if not fee:
@@ -38,8 +46,11 @@ class MidtransService:
             )
         
         # Create transaction details
+        # Generate shorter order_id (max 50 chars for Midtrans)
+        timestamp = int(datetime.utcnow().timestamp())
+        order_id = f"RT{timestamp}{payment_request.fee_id[-8:]}"  # Use last 8 chars of fee_id
         transaction_details = {
-            "order_id": f"RT-RW-{payment_request.fee_id}-{int(datetime.utcnow().timestamp())}",
+            "order_id": order_id,
             "gross_amount": fee["nominal"]
         }
         
@@ -73,6 +84,10 @@ class MidtransService:
                 }
             }
             
+            # Log transaction data for debugging
+            logger.info(f"Creating Midtrans transaction with order_id: {order_id}")
+            logger.info(f"Transaction data: {transaction_data}")
+            
             # Add payment method specific configurations
             if payment_request.payment_method == "credit_card":
                 transaction_data["credit_card"] = {
@@ -92,24 +107,40 @@ class MidtransService:
                 )
             
             # Create Snap transaction
-            response = self.snap.create_transaction(transaction_data)
+            try:
+                response = self.snap.create_transaction(transaction_data)
+            except Exception as api_error:
+                logger.error(f"Midtrans API call failed: {str(api_error)}")
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail=f"Gagal menghubungi Midtrans: {str(api_error)}"
+                )
             
-            if response.get("status_code") != "201":
+            # Log response for debugging
+            logger.info(f"Midtrans response: {response}")
+            
+            # Check if response contains required fields (Snap API success indicators)
+            if not response.get("token") or not response.get("redirect_url"):
+                error_msg = response.get('status_message', 'Invalid response from Midtrans')
+                logger.error(f"Midtrans API error: {error_msg}")
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"Gagal membuat transaksi: {response.get('status_message', 'Unknown error')}"
+                    detail=f"Gagal membuat transaksi: {error_msg}"
                 )
+            
+            # Generate transaction_id if not provided by Midtrans (Snap API doesn't return it)
+            transaction_id = response.get("transaction_id") or f"txn_{timestamp}_{payment_request.fee_id[-8:]}"
             
             # Save payment to database
             payment_data = {
-                "id": f"payment_{int(datetime.utcnow().timestamp())}",
+                "id": f"pay_{timestamp}",
                 "fee_id": payment_request.fee_id,
                 "user_id": user_id,
                 "amount": fee["nominal"],
-                "method": payment_request.payment_method,
+                "payment_method": payment_request.payment_method,
                 "status": "Pending",
                 "created_at": datetime.utcnow(),
-                "transaction_id": response.get("transaction_id"),
+                "transaction_id": transaction_id,
                 "payment_token": response.get("token"),
                 "payment_url": response.get("redirect_url"),
                 "midtrans_status": "pending",
@@ -129,7 +160,7 @@ class MidtransService:
             
             return PaymentCreateResponse(
                 payment_id=payment_data["id"],
-                transaction_id=payment_data["transaction_id"],
+                transaction_id=transaction_id,
                 payment_token=payment_data["payment_token"],
                 payment_url=payment_data["payment_url"],
                 expiry_time=payment_data["expiry_time"],

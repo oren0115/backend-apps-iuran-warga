@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
+from fastapi.responses import StreamingResponse
 from app.models.schemas import (
     UserResponse, FeeResponse, PaymentResponse, MessageResponse, 
     GenerateFeesRequest, NotificationResponse
@@ -10,6 +11,9 @@ from app.controllers.notification_controller import NotificationController
 from app.controllers.admin_controller import AdminController
 from app.utils.auth import get_current_admin
 from typing import List
+from datetime import datetime, date
+import io
+import pandas as pd
 
 router = APIRouter()
 user_controller = UserController()
@@ -63,3 +67,88 @@ async def get_dashboard_stats(current_user = Depends(get_current_admin)):
 async def init_sample_data():
     """Initialize sample data for testing"""
     return await admin_controller.init_sample_data()
+
+# Reports Export
+@router.get("/reports/fees/export")
+async def export_fees(
+    bulan: str = Query(..., description="Format YYYY-MM"),
+    format: str = Query("excel", pattern="^(excel|pdf)$"),
+    current_user = Depends(get_current_admin),
+):
+    data = await fee_controller.get_fees_by_month(bulan)
+    # Convert Pydantic models to dicts
+    records = [d.model_dump() if hasattr(d, "model_dump") else dict(d) for d in data]
+    df = pd.DataFrame(records)
+    if format == "excel":
+        buffer = io.BytesIO()
+        with pd.ExcelWriter(buffer, engine="xlsxwriter") as writer:
+            df.to_excel(writer, index=False, sheet_name="Fees")
+        buffer.seek(0)
+        return StreamingResponse(
+            buffer,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-Disposition": f'attachment; filename="fees_{bulan}.xlsx"'},
+        )
+    else:
+        try:
+            from reportlab.pdfgen import canvas
+        except ImportError:
+            raise RuntimeError("PDF export requires reportlab. Please install it.")
+        buffer = io.BytesIO()
+        c = canvas.Canvas(buffer)
+        textobject = c.beginText(40, 800)
+        textobject.textLine(f"Laporan Iuran {bulan}")
+        for row in df.to_dict(orient="records"):
+            textobject.textLine(str(row))
+        c.drawText(textobject)
+        c.showPage()
+        c.save()
+        buffer.seek(0)
+        return StreamingResponse(
+            buffer,
+            media_type="application/pdf",
+            headers={"Content-Disposition": f'attachment; filename="fees_{bulan}.pdf"'},
+        )
+
+@router.get("/reports/payments/export")
+async def export_payments(
+    start: date = Query(..., description="Start date YYYY-MM-DD"),
+    end: date = Query(..., description="End date YYYY-MM-DD"),
+    format: str = Query("excel", pattern="^(excel|pdf)$"),
+    current_user = Depends(get_current_admin),
+):
+    start_dt = datetime.combine(start, datetime.min.time())
+    end_dt = datetime.combine(end, datetime.max.time())
+    data = await payment_controller.get_payments_by_date_range(start_dt, end_dt)
+    records = [d.model_dump() if hasattr(d, "model_dump") else dict(d) for d in data]
+    df = pd.DataFrame(records)
+    if format == "excel":
+        buffer = io.BytesIO()
+        with pd.ExcelWriter(buffer, engine="xlsxwriter") as writer:
+            df.to_excel(writer, index=False, sheet_name="Payments")
+        buffer.seek(0)
+        return StreamingResponse(
+            buffer,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-Disposition": f'attachment; filename="payments_{start}_{end}.xlsx"'},
+        )
+    else:
+        try:
+            from reportlab.pdfgen import canvas
+        except ImportError:
+            raise RuntimeError("PDF export requires reportlab. Please install it.")
+        buffer = io.BytesIO()
+        c = canvas.Canvas(buffer)
+        textobject = c.beginText(40, 800)
+        textobject.textLine(f"Laporan Pembayaran {start} s.d {end}")
+        for row in df.to_dict(orient="records"):
+            textobject.textLine(str(row))
+        c.drawText(textobject)
+        c.showPage()
+        c.save()
+        buffer.seek(0)
+        return StreamingResponse(
+            buffer,
+            media_type="application/pdf",
+            headers={"Content-Disposition": f'attachment; filename="payments_{start}_{end}.pdf"'},
+        )

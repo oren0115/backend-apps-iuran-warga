@@ -1,9 +1,11 @@
-from pydantic import BaseModel, Field
-from typing import List, Optional
+from pydantic import BaseModel, Field, validator
+from typing import List, Optional, Union
 from datetime import datetime
 import uuid
 
+# -------------------------
 # User Models
+# -------------------------
 class UserBase(BaseModel):
     username: str
     nama: str
@@ -34,7 +36,9 @@ class LoginResponse(BaseModel):
     token_type: str
     user: UserResponse
 
+# -------------------------
 # Fee Models
+# -------------------------
 class FeeBase(BaseModel):
     kategori: str
     nominal: int
@@ -54,7 +58,9 @@ class FeeResponse(FeeBase):
     due_date: datetime
     created_at: datetime
 
-# Payment Models (Midtrans Only)
+# -------------------------
+# Payment Models
+# -------------------------
 class PaymentBase(BaseModel):
     amount: int
     payment_method: str  # credit_card, bank_transfer, gopay, etc.
@@ -68,6 +74,7 @@ class Payment(PaymentBase):
     user_id: str
     status: str = "Pending"
     created_at: datetime = Field(default_factory=datetime.utcnow)
+
     # Midtrans fields
     transaction_id: Optional[str] = None
     payment_token: Optional[str] = None
@@ -84,8 +91,7 @@ class PaymentResponse(PaymentBase):
     fee_id: str
     user_id: str
     status: str
-    created_at: datetime
-    # Midtrans fields
+    created_at: Union[datetime, str]
     transaction_id: Optional[str] = None
     payment_token: Optional[str] = None
     payment_url: Optional[str] = None
@@ -93,14 +99,29 @@ class PaymentResponse(PaymentBase):
     payment_type: Optional[str] = None
     bank: Optional[str] = None
     va_number: Optional[str] = None
-    expiry_time: Optional[datetime] = None
-    settled_at: Optional[datetime] = None
+    expiry_time: Optional[Union[datetime, str]] = None
+    settled_at: Optional[Union[datetime, str]] = None
+
+    # validator: convert str -> datetime
+    @validator("created_at", "expiry_time", "settled_at", pre=True, always=True)
+    def parse_datetime(cls, v):
+        if isinstance(v, str):
+            try:
+                return datetime.fromisoformat(v)
+            except Exception:
+                try:
+                    return datetime.strptime(v, "%Y-%m-%d %H:%M:%S")
+                except Exception:
+                    return None
+        return v
 
 class PaymentWithDetails(PaymentResponse):
-    user: Optional[UserResponse] = None
-    fee: Optional[FeeResponse] = None
+    user: Optional['UserResponse'] = None
+    fee: Optional['FeeResponse'] = None
 
+# -------------------------
 # Notification Models
+# -------------------------
 class NotificationBase(BaseModel):
     title: str
     message: str
@@ -118,22 +139,25 @@ class NotificationResponse(NotificationBase):
     is_read: bool
     created_at: datetime
 
+# -------------------------
 # Response Models
+# -------------------------
 class MessageResponse(BaseModel):
     message: str
 
 class GenerateFeesRequest(BaseModel):
     bulan: str
 
-# Midtrans specific models
+# -------------------------
+# Midtrans Models
+# -------------------------
 class MidtransPaymentRequest(BaseModel):
     fee_id: str
     payment_method: str  # credit_card, bank_transfer, gopay, etc.
 
-# Payment creation response
 class PaymentCreateResponse(BaseModel):
     payment_id: str
-    transaction_id: str
+    transaction_id: Optional[str] = None
     payment_token: str
     payment_url: str
     expiry_time: datetime

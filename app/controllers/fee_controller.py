@@ -57,6 +57,13 @@ class FeeController:
         fees = await db.fees.find({}, {"_id": 0}).to_list(1000)
         return [FeeResponse(**fee) for fee in fees]
 
+    async def get_fees_by_month(self, bulan: str) -> list[FeeResponse]:
+        """Get fees filtered by specific month string (format YYYY-MM) for export"""
+        db = get_database()
+        
+        fees = await db.fees.find({"bulan": bulan}, {"_id": 0}).to_list(5000)
+        return [FeeResponse(**fee) for fee in fees]
+
     async def update_fee_status(self, fee_id: str, status: str) -> dict:
         """Update fee status"""
         db = get_database()
