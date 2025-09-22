@@ -137,6 +137,7 @@ class MidtransService:
                 "id": f"pay_{timestamp}",
                 "fee_id": payment_request.fee_id,
                 "user_id": user_id,
+                "order_id": order_id,
                 "amount": fee["nominal"],
                 "payment_method": payment_request.payment_method,
                 "status": "Pending",
@@ -161,6 +162,7 @@ class MidtransService:
             
             return PaymentCreateResponse(
                 payment_id=payment_data["id"],
+                order_id=order_id,
                 transaction_id=transaction_id,
                 payment_token=payment_data["payment_token"],
                 payment_url=payment_data["payment_url"],
@@ -192,10 +194,23 @@ class MidtransService:
                 detail="Invalid signature"
             )
         
-        # Find payment by transaction_id
+        # Find payment by transaction_id; fallback to order_id
         payment = await db.payments.find_one({"transaction_id": notification.transaction_id})
         if not payment:
-            logger.error(f"Payment not found for transaction_id: {notification.transaction_id}")
+            logger.warning(
+                f"Payment not found by transaction_id {notification.transaction_id}, trying order_id {notification.order_id}"
+            )
+            payment = await db.payments.find_one({"order_id": notification.order_id})
+            if payment and not payment.get("transaction_id"):
+                # Backfill transaction_id from notification
+                await db.payments.update_one(
+                    {"id": payment["id"]}, {"$set": {"transaction_id": notification.transaction_id}}
+                )
+                payment["transaction_id"] = notification.transaction_id
+        if not payment:
+            logger.error(
+                f"Payment not found for transaction_id: {notification.transaction_id} or order_id: {notification.order_id}"
+            )
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Payment not found"
@@ -276,12 +291,13 @@ class MidtransService:
         }
         return status_mapping.get(midtrans_status, "Pending")
     
-    async def check_payment_status(self, transaction_id: str) -> dict:
-        """Check payment status from Midtrans"""
+    async def check_payment_status(self, identifier: str) -> dict:
+        """Check payment status from Midtrans using order_id (preferred) or transaction_id"""
         try:
-            response = self.core_api.transactions.status(transaction_id)
+            # Midtrans Core API expects order_id for status checks
+            response = self.core_api.transactions.status(identifier)
             return {
-                "transaction_id": transaction_id,
+                "identifier": identifier,
                 "status": response.get("transaction_status"),
                 "payment_type": response.get("payment_type"),
                 "gross_amount": response.get("gross_amount"),

@@ -1,12 +1,16 @@
 from fastapi import HTTPException, status
 from app.models.schemas import (
     Payment, PaymentCreate, PaymentResponse, PaymentWithDetails,
-    UserResponse, FeeResponse, PaymentCreateResponse, MidtransPaymentRequest
+    UserResponse, FeeResponse, PaymentCreateResponse, MidtransPaymentRequest,
+    MidtransNotificationRequest,
 )
 from app.config.database import get_database
 from app.services.midtrans_service import MidtransService
 from datetime import datetime
 import uuid
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class PaymentController:
@@ -68,9 +72,44 @@ class PaymentController:
         # Handle backward compatibility for old 'method' field
         processed_payments = []
         for payment in payments:
-            # If payment has old 'method' field, rename it to 'payment_method'
             if 'method' in payment and 'payment_method' not in payment:
                 payment['payment_method'] = payment.pop('method')
+
+            # Normalize status for display if webhook hasn't updated the record yet
+            midtrans_status = (payment.get('midtrans_status') or '').lower()
+            status_value = payment.get('status')
+            if status_value is None:
+                status_value = 'Pending'
+            # If Midtrans says settled/capture but status still pending, reflect success in response
+            if midtrans_status in ['settlement', 'capture'] and str(status_value).lower() == 'pending':
+                payment['status'] = 'Success'
+
+            # Auto-sync pending payments by checking Midtrans using order_id (more reliable)
+            if str(payment.get('status', 'Pending')).lower() == 'pending' and payment.get('order_id'):
+                try:
+                    midtrans_result = await self.midtrans_service.check_payment_status(payment['order_id'])
+                    mapped_status = self.midtrans_service._map_midtrans_status(midtrans_result.get('status', 'pending'))
+                    if mapped_status != payment.get('status'):
+                        update_data = {
+                            'status': mapped_status,
+                            'midtrans_status': midtrans_result.get('status', 'pending')
+                        }
+                        if mapped_status == 'Success':
+                            update_data['settled_at'] = datetime.utcnow()
+                            await db.fees.update_one(
+                                {"id": payment["fee_id"]},
+                                {"$set": {"status": "Lunas"}}
+                            )
+                        elif mapped_status == 'Failed':
+                            await db.fees.update_one(
+                                {"id": payment["fee_id"]},
+                                {"$set": {"status": "Belum Bayar"}}
+                            )
+                        await db.payments.update_one({"id": payment["id"]}, {"$set": update_data})
+                        payment.update(update_data)
+                except Exception:
+                    # If Midtrans check fails, keep current status without breaking the list
+                    pass
             processed_payments.append(PaymentResponse(**payment))
         
         return processed_payments
@@ -82,7 +121,6 @@ class PaymentController:
 
         result = []
         for payment in payments:
-            # Handle backward compatibility for old 'method' field
             if 'method' in payment and 'payment_method' not in payment:
                 payment['payment_method'] = payment.pop('method')
             
@@ -104,12 +142,16 @@ class PaymentController:
         db = get_database()
         payments = await db.payments.find({}, {"_id": 0}).to_list(1000)
         
-        # Handle backward compatibility for old 'method' field
         processed_payments = []
         for payment in payments:
-            # If payment has old 'method' field, rename it to 'payment_method'
             if 'method' in payment and 'payment_method' not in payment:
                 payment['payment_method'] = payment.pop('method')
+            midtrans_status = (payment.get('midtrans_status') or '').lower()
+            status_value = payment.get('status')
+            if status_value is None:
+                status_value = 'Pending'
+            if midtrans_status in ['settlement', 'capture'] and str(status_value).lower() == 'pending':
+                payment['status'] = 'Success'
             processed_payments.append(PaymentResponse(**payment))
         
         return processed_payments
@@ -121,20 +163,23 @@ class PaymentController:
             "created_at": {"$gte": start, "$lte": end}
         }, {"_id": 0}).to_list(5000)
         
-        # Handle backward compatibility for old 'method' field
         processed_payments = []
         for payment in payments:
-            # If payment has old 'method' field, rename it to 'payment_method'
             if 'method' in payment and 'payment_method' not in payment:
                 payment['payment_method'] = payment.pop('method')
+            midtrans_status = (payment.get('midtrans_status') or '').lower()
+            status_value = payment.get('status')
+            if status_value is None:
+                status_value = 'Pending'
+            if midtrans_status in ['settlement', 'capture'] and str(status_value).lower() == 'pending':
+                payment['status'] = 'Success'
             processed_payments.append(PaymentResponse(**payment))
         
         return processed_payments
 
-    async def handle_midtrans_notification(self, notification_data: dict) -> dict:
+    async def handle_midtrans_notification(self, notification: MidtransNotificationRequest) -> dict:
         """Handle Midtrans payment notification"""
-        from app.models.schemas import MidtransNotificationRequest
-        notification = MidtransNotificationRequest(**notification_data)
+        # Teruskan model langsung ke service
         return await self.midtrans_service.handle_notification(notification)
 
     async def check_payment_status(self, transaction_id: str) -> dict:
@@ -145,7 +190,6 @@ class PaymentController:
         """Check payment status by payment ID and update if needed"""
         db = get_database()
         
-        # Get payment from database
         payment = await db.payments.find_one({"id": payment_id, "user_id": user_id})
         if not payment:
             raise HTTPException(
@@ -153,13 +197,11 @@ class PaymentController:
                 detail="Payment not found"
             )
         
-        # If payment is still pending, check with Midtrans
         if payment["status"] == "Pending" and payment.get("transaction_id"):
             try:
                 midtrans_status = await self.midtrans_service.check_payment_status(payment["transaction_id"])
                 new_status = self.midtrans_service._map_midtrans_status(midtrans_status.get("status", "pending"))
                 
-                # Update payment status if changed
                 if new_status != payment["status"]:
                     update_data = {
                         "status": new_status,
@@ -168,13 +210,11 @@ class PaymentController:
                     
                     if new_status == "Success":
                         update_data["settled_at"] = datetime.utcnow()
-                        # Update fee status
                         await db.fees.update_one(
                             {"id": payment["fee_id"]},
                             {"$set": {"status": "Lunas"}}
                         )
                     elif new_status == "Failed":
-                        # Update fee status back to unpaid
                         await db.fees.update_one(
                             {"id": payment["fee_id"]},
                             {"$set": {"status": "Belum Bayar"}}
@@ -185,11 +225,9 @@ class PaymentController:
                         {"$set": update_data}
                     )
                     
-                    # Update local payment data
                     payment.update(update_data)
                     
-            except Exception as e:
-                # If Midtrans check fails, return current status
+            except Exception:
                 pass
         
         return {
@@ -203,7 +241,6 @@ class PaymentController:
         """Force check payment status from Midtrans and update database"""
         db = get_database()
         
-        # Get payment from database
         payment = await db.payments.find_one({"id": payment_id, "user_id": user_id})
         if not payment:
             raise HTTPException(
@@ -211,20 +248,18 @@ class PaymentController:
                 detail="Payment not found"
             )
         
-        if not payment.get("transaction_id"):
+        if not payment.get("order_id"):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="No transaction ID found for this payment"
+                detail="No order ID found for this payment"
             )
         
         try:
-            # Force check with Midtrans
-            midtrans_status = await self.midtrans_service.check_payment_status(payment["transaction_id"])
+            midtrans_status = await self.midtrans_service.check_payment_status(payment["order_id"])
             new_status = self.midtrans_service._map_midtrans_status(midtrans_status.get("status", "pending"))
             
             logger.info(f"Force check - Midtrans status: {midtrans_status.get('status')}, mapped to: {new_status}")
             
-            # Update payment status if changed
             if new_status != payment["status"]:
                 update_data = {
                     "status": new_status,
@@ -233,14 +268,12 @@ class PaymentController:
                 
                 if new_status == "Success":
                     update_data["settled_at"] = datetime.utcnow()
-                    # Update fee status
                     await db.fees.update_one(
                         {"id": payment["fee_id"]},
                         {"$set": {"status": "Lunas"}}
                     )
                     logger.info(f"Force check - Updated fee {payment['fee_id']} to Lunas")
                 elif new_status == "Failed":
-                    # Update fee status back to unpaid
                     await db.fees.update_one(
                         {"id": payment["fee_id"]},
                         {"$set": {"status": "Belum Bayar"}}

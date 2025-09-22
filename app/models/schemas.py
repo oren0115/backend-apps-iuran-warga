@@ -72,6 +72,7 @@ class Payment(PaymentBase):
     id: Optional[str] = Field(default_factory=lambda: str(uuid.uuid4()))
     fee_id: str
     user_id: str
+    order_id: Optional[str] = None
     status: str = "Pending"
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
@@ -90,6 +91,7 @@ class PaymentResponse(PaymentBase):
     id: str
     fee_id: str
     user_id: str
+    order_id: Optional[str] = None
     status: str
     created_at: Union[datetime, str]
     transaction_id: Optional[str] = None
@@ -157,6 +159,7 @@ class MidtransPaymentRequest(BaseModel):
 
 class PaymentCreateResponse(BaseModel):
     payment_id: str
+    order_id: str
     transaction_id: Optional[str] = None
     payment_token: str
     payment_url: str
@@ -170,6 +173,7 @@ class MidtransNotificationRequest(BaseModel):
     transaction_status: str
     payment_type: str
     order_id: str
+    status_code: str
     gross_amount: str
     fraud_status: Optional[str] = None
     bank: Optional[str] = None
