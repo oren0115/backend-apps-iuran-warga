@@ -33,3 +33,13 @@ async def handle_midtrans_notification(request: Request):
 async def check_payment_status(transaction_id: str):
     """Check payment status from Midtrans"""
     return await payment_controller.check_payment_status(transaction_id)
+
+@router.get("/payments/check/{payment_id}")
+async def check_payment_by_id(payment_id: str, current_user = Depends(get_current_user)):
+    """Check payment status by payment ID"""
+    return await payment_controller.check_payment_by_id(payment_id, current_user["id"])
+
+@router.post("/payments/force-check/{payment_id}")
+async def force_check_payment_status(payment_id: str, current_user = Depends(get_current_user)):
+    """Force check payment status from Midtrans and update database"""
+    return await payment_controller.force_check_payment_status(payment_id, current_user["id"])

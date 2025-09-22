@@ -10,3 +10,4 @@ midtransclient==1.4.2
 pandas==2.2.2
 XlsxWriter==3.2.0
 reportlab==4.2.2
+pyngrok==7.3.0

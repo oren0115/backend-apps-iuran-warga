@@ -79,9 +79,10 @@ class MidtransService:
                 "item_details": item_details,
                 "callbacks": {
                     "finish": "https://yourdomain.com/payment/finish",
-                    "unfinish": "https://yourdomain.com/payment/unfinish",
+                    "unfinish": "https://yourdomain.com/payment/unfinish", 
                     "error": "https://yourdomain.com/payment/error"
-                }
+                },
+                "notification_url": "https://yourdomain.com/api/payments/notification"
             }
             
             # Log transaction data for debugging
@@ -180,8 +181,12 @@ class MidtransService:
         """Handle payment notification from Midtrans"""
         db = get_database()
         
+        # Log notification for debugging
+        logger.info(f"Received Midtrans notification: {notification.dict()}")
+        
         # Verify signature
         if not self._verify_signature(notification):
+            logger.error(f"Invalid signature for notification: {notification.dict()}")
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Invalid signature"
@@ -190,13 +195,17 @@ class MidtransService:
         # Find payment by transaction_id
         payment = await db.payments.find_one({"transaction_id": notification.transaction_id})
         if not payment:
+            logger.error(f"Payment not found for transaction_id: {notification.transaction_id}")
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Payment not found"
             )
         
+        logger.info(f"Found payment: {payment['id']} with current status: {payment['status']}")
+        
         # Update payment status based on Midtrans status
         new_status = self._map_midtrans_status(notification.transaction_status)
+        logger.info(f"Mapping Midtrans status '{notification.transaction_status}' to '{new_status}'")
         
         update_data = {
             "midtrans_status": notification.transaction_status,
@@ -205,31 +214,38 @@ class MidtransService:
             "va_number": notification.va_number
         }
         
-        if new_status == "Approved":
+        if new_status == "Success":
             update_data.update({
-                "status": "Approved",
+                "status": "Success",
                 "settled_at": datetime.utcnow()
             })
+            
+            logger.info(f"Updating payment to Success status for payment: {payment['id']}")
             
             # Update fee status
             await db.fees.update_one(
                 {"id": payment["fee_id"]},
                 {"$set": {"status": "Lunas"}}
             )
-        elif new_status == "Rejected":
-            update_data["status"] = "Rejected"
+            logger.info(f"Updated fee {payment['fee_id']} to Lunas status")
+            
+        elif new_status == "Failed":
+            update_data["status"] = "Failed"
+            logger.info(f"Updating payment to Failed status for payment: {payment['id']}")
             
             # Update fee status back to unpaid
             await db.fees.update_one(
                 {"id": payment["fee_id"]},
                 {"$set": {"status": "Belum Bayar"}}
             )
+            logger.info(f"Updated fee {payment['fee_id']} to Belum Bayar status")
         
         # Update payment
         await db.payments.update_one(
             {"transaction_id": notification.transaction_id},
             {"$set": update_data}
         )
+        logger.info(f"Updated payment {payment['id']} with data: {update_data}")
         
         return {"message": "Notification processed successfully"}
     
@@ -250,13 +266,13 @@ class MidtransService:
     def _map_midtrans_status(self, midtrans_status: str) -> str:
         """Map Midtrans status to internal status"""
         status_mapping = {
-            "capture": "Approved",
-            "settlement": "Approved",
+            "capture": "Success",
+            "settlement": "Success", 
             "pending": "Pending",
-            "deny": "Rejected",
-            "cancel": "Rejected",
-            "expire": "Rejected",
-            "failure": "Rejected"
+            "deny": "Failed",
+            "cancel": "Failed",
+            "expire": "Failed",
+            "failure": "Failed"
         }
         return status_mapping.get(midtrans_status, "Pending")
     
