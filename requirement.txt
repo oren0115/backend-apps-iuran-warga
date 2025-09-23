@@ -11,3 +11,5 @@ pandas==2.2.2
 XlsxWriter==3.2.0
 reportlab==4.2.2
 pyngrok==7.3.0
+starlette==0.27.0
+openpyxl==3.1.2
