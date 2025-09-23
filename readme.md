@@ -1,15 +1,17 @@
 # RT/RW Fee Management System
 
-Sistem manajemen iuran RT/RW berbasis FastAPI untuk mengelola pembayaran iuran bulanan warga.
+Sistem manajemen iuran RT/RW berbasis FastAPI untuk mengelola pembayaran iuran bulanan warga dengan integrasi payment gateway Midtrans.
 
 ## 🚀 Fitur Utama
 
 - **Manajemen User**: Registrasi, login, dan profil warga
 - **Manajemen Iuran**: Generate iuran bulanan otomatis untuk semua warga
-- **Sistem Pembayaran**: Upload bukti transfer dan approval pembayaran
+- **Sistem Pembayaran**: Integrasi Midtrans untuk pembayaran online (Credit Card, Bank Transfer, GoPay)
 - **Notifikasi**: Sistem notifikasi untuk pengumuman dan reminder
 - **Dashboard Admin**: Statistik dan monitoring sistem
+- **Export Laporan**: Export data iuran dan pembayaran ke Excel/PDF
 - **Autentikasi JWT**: Keamanan dengan token-based authentication
+- **Webhook Midtrans**: Otomatis update status pembayaran
 
 ## 🛠️ Teknologi yang Digunakan
 
@@ -18,6 +20,10 @@ Sistem manajemen iuran RT/RW berbasis FastAPI untuk mengelola pembayaran iuran b
 - **Pydantic** - Data validation dan serialization
 - **JWT** - JSON Web Token untuk autentikasi
 - **Uvicorn** - ASGI server untuk production
+- **Midtrans** - Payment gateway untuk pembayaran online
+- **Pandas** - Data processing untuk export laporan
+- **ReportLab** - PDF generation
+- **XlsxWriter** - Excel export
 
 ## 📋 Prerequisites
 
@@ -37,7 +43,7 @@ Sistem manajemen iuran RT/RW berbasis FastAPI untuk mengelola pembayaran iuran b
 2. **Install dependencies**
 
    ```bash
-   pip install -r requirement.txt
+   pip install -r requirements.txt
    ```
 
 3. **Setup environment variables**
@@ -48,6 +54,9 @@ Sistem manajemen iuran RT/RW berbasis FastAPI untuk mengelola pembayaran iuran b
    DB_NAME=rt_rw_management
    JWT_SECRET_KEY=your-secret-key-here
    JWT_ALGORITHM=HS256
+   MIDTRANS_SERVER_KEY=your-midtrans-server-key
+   MIDTRANS_CLIENT_KEY=your-midtrans-client-key
+   MIDTRANS_IS_PRODUCTION=false
    ```
 
 4. **Jalankan aplikasi**
@@ -71,7 +80,8 @@ Setelah aplikasi berjalan, dokumentasi API dapat diakses di:
 backend/
 ├── app/
 │   ├── config/
-│   │   └── database.py          # Konfigurasi database MongoDB
+│   │   ├── database.py          # Konfigurasi database MongoDB
+│   │   └── midtrans.py          # Konfigurasi Midtrans payment gateway
 │   ├── controllers/
 │   │   ├── admin_controller.py  # Logic untuk admin operations
 │   │   ├── fee_controller.py    # Logic untuk manajemen iuran
@@ -86,10 +96,12 @@ backend/
 │   │   ├── notification_routes.py  # API endpoints untuk notifikasi
 │   │   ├── payment_routes.py    # API endpoints untuk pembayaran
 │   │   └── user_routes.py       # API endpoints untuk user
+│   ├── services/
+│   │   └── midtrans_service.py  # Service untuk integrasi Midtrans
 │   └── utils/
 │       └── auth.py              # Utility untuk autentikasi JWT
 ├── main.py                      # Entry point aplikasi
-├── requirement.txt              # Dependencies
+├── requirements.txt             # Dependencies
 └── readme.md                    # Dokumentasi project
 ```
 
@@ -113,6 +125,8 @@ backend/
 - `POST /api/admin/notifications/broadcast` - Broadcast notifikasi (admin only)
 - `GET /api/admin/dashboard` - Get dashboard stats (admin only)
 - `POST /api/admin/init-sample-data` - Initialize sample data
+- `GET /api/admin/reports/fees/export` - Export laporan iuran ke Excel/PDF (admin only)
+- `GET /api/admin/reports/payments/export` - Export laporan pembayaran ke Excel/PDF (admin only)
 
 ### Fee Endpoints
 
@@ -122,7 +136,9 @@ backend/
 ### Payment Endpoints
 
 - `GET /api/payments` - Get riwayat pembayaran user (protected)
-- `POST /api/payments` - Upload bukti pembayaran (protected)
+- `POST /api/payments/create` - Buat pembayaran via Midtrans (protected)
+- `POST /api/payments/notification` - Webhook Midtrans untuk update status
+- `GET /api/payments/status/{order_id}` - Cek status pembayaran (protected)
 
 ### Notification Endpoints
 
@@ -171,13 +187,20 @@ backend/
   "_id": "uuid",
   "fee_id": "uuid",
   "user_id": "uuid",
+  "order_id": "string",
+  "transaction_id": "string",
   "amount": "integer",
-  "method": "string",
-  "bukti_transfer": "string",
+  "payment_method": "string",
   "status": "string",
-  "created_at": "datetime",
-  "approved_at": "datetime",
-  "approved_by": "uuid"
+  "midtrans_status": "string",
+  "payment_type": "string",
+  "bank": "string",
+  "va_number": "string",
+  "payment_token": "string",
+  "payment_url": "string",
+  "expiry_time": "datetime",
+  "settled_at": "datetime",
+  "created_at": "datetime"
 }
 ```
 
@@ -209,14 +232,29 @@ python main.py
 uvicorn main:app --host 0.0.0.0 --port 8000
 ```
 
+### Render Deployment
+
+**Build Command:**
+```bash
+pip install --upgrade pip && pip install -r requirements.txt
+```
+
+**Start Command:**
+```bash
+cd backend && uvicorn main:app --host 0.0.0.0 --port $PORT
+```
+
 ## 🔒 Environment Variables
 
-| Variable         | Description               | Default                     |
-| ---------------- | ------------------------- | --------------------------- |
-| `MONGO_URL`      | MongoDB connection string | `mongodb://localhost:27017` |
-| `DB_NAME`        | Database name             | `rt_rw_management`          |
-| `JWT_SECRET_KEY` | Secret key for JWT        | Required                    |
-| `JWT_ALGORITHM`  | JWT algorithm             | `HS256`                     |
+| Variable                | Description                    | Default                     |
+| ----------------------- | ------------------------------ | --------------------------- |
+| `MONGO_URL`             | MongoDB connection string      | `mongodb://localhost:27017` |
+| `DB_NAME`               | Database name                  | `rt_rw_management`          |
+| `JWT_SECRET_KEY`        | Secret key for JWT             | Required                    |
+| `JWT_ALGORITHM`         | JWT algorithm                  | `HS256`                     |
+| `MIDTRANS_SERVER_KEY`   | Midtrans server key            | Required                    |
+| `MIDTRANS_CLIENT_KEY`   | Midtrans client key            | Required                    |
+| `MIDTRANS_IS_PRODUCTION`| Midtrans production mode       | `false`                     |
 
 ## 📝 Usage Examples
 
@@ -255,6 +293,26 @@ curl -X POST "http://localhost:8000/api/admin/generate-fees" \
   -d '{
     "bulan": "2024-01"
   }'
+```
+
+### 4. Buat Pembayaran via Midtrans
+
+```bash
+curl -X POST "http://localhost:8000/api/payments/create" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "fee_id": "fee_123456",
+    "payment_method": "credit_card"
+  }'
+```
+
+### 5. Export Laporan Iuran (Admin)
+
+```bash
+curl -X GET "http://localhost:8000/api/admin/reports/fees/export?bulan=2024-01&format=excel" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -o "laporan_iuran_2024-01.xlsx"
 ```
 
 ## 🤝 Contributing
