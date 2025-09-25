@@ -13,41 +13,44 @@ class AdminController:
         db = get_database()
         
         # Create sample users
-        sample_users = [
-            {
-                "id": str(uuid.uuid4()),
-                "username": "admin",
-                "password": self.auth_manager.hash_password("admin123"),
-                "nama": "Admin RT/RW",
-                "alamat": "Jl. Merdeka No. 1",
-                "nomor_rumah": "001",
-                "nomor_hp": "08123456789",
-                "is_admin": True,
-                "created_at": datetime.utcnow()
-            },
-            {
-                "id": str(uuid.uuid4()),
-                "username": "budi",
-                "password": self.auth_manager.hash_password("budi123"),
-                "nama": "Budi Santoso",
-                "alamat": "Jl. Melati No. 12",
-                "nomor_rumah": "012",
-                "nomor_hp": "08123456790",
-                "is_admin": False,
-                "created_at": datetime.utcnow()
-            },
-            {
-                "id": str(uuid.uuid4()),
-                "username": "siti",
-                "password": self.auth_manager.hash_password("siti123"),
-                "nama": "Siti Rahayu",
-                "alamat": "Jl. Mawar No. 8",
-                "nomor_rumah": "008",
-                "nomor_hp": "08123456791",
-                "is_admin": False,
-                "created_at": datetime.utcnow()
-            }
-        ]
+        # sample_users = [
+        #     {
+        #         "id": str(uuid.uuid4()),
+        #         "username": "admin",
+        #         "password": self.auth_manager.hash_password("admin123"),
+        #         "nama": "Admin RT/RW",
+        #         "alamat": "Jl. Merdeka No. 1",
+        #         "nomor_rumah": "001",
+        #         "nomor_hp": "08123456789",
+        #         "is_admin": True,
+        #         "tipe_rumah": None,
+        #         "created_at": datetime.utcnow()
+        #     },
+        #     {
+        #         "id": str(uuid.uuid4()),
+        #         "username": "budi",
+        #         "password": self.auth_manager.hash_password("budi123"),
+        #         "nama": "Budi Santoso",
+        #         "alamat": "Jl. Melati No. 12",
+        #         "nomor_rumah": "012",
+        #         "nomor_hp": "08123456790",
+        #         "is_admin": False,
+        #         "tipe_rumah": "60M2",
+        #         "created_at": datetime.utcnow()
+        #     },
+        #     {
+        #         "id": str(uuid.uuid4()),
+        #         "username": "siti",
+        #         "password": self.auth_manager.hash_password("siti123"),
+        #         "nama": "Siti Rahayu",
+        #         "alamat": "Jl. Mawar No. 8",
+        #         "nomor_rumah": "008",
+        #         "nomor_hp": "08123456791",
+        #         "is_admin": False,
+        #         "tipe_rumah": "HOOK",
+        #         "created_at": datetime.utcnow()
+        #     }
+        # ]
         
         # Clear existing data
         await db.users.delete_many({})
@@ -58,30 +61,27 @@ class AdminController:
         # Insert sample users
         await db.users.insert_many(sample_users)
         
-        # Generate sample fees for current month
+        # Generate sample fees for current month (berdasarkan tipe rumah)
         current_month = datetime.utcnow().strftime("%Y-%m")
-        fee_categories = [
-            {"kategori": "Keamanan", "nominal": 50000},
-            {"kategori": "Kebersihan", "nominal": 30000},
-            {"kategori": "Kas", "nominal": 20000}
-        ]
-        
+        sample_tarif = {"60M2": 100000, "72M2": 120000, "HOOK": 150000}
         sample_fees = []
         for user in sample_users:
             if not user["is_admin"]:
-                for category in fee_categories:
+                tipe = (user.get("tipe_rumah") or "").upper()
+                nominal = sample_tarif.get(tipe)
+                if nominal:
                     sample_fees.append({
                         "id": str(uuid.uuid4()),
                         "user_id": user["id"],
-                        "kategori": category["kategori"],
-                        "nominal": category["nominal"],
+                        "kategori": tipe or "UNKNOWN",
+                        "nominal": nominal,
                         "bulan": current_month,
                         "status": "Belum Bayar",
                         "due_date": datetime.utcnow() + timedelta(days=30),
                         "created_at": datetime.utcnow()
                     })
-        
-        await db.fees.insert_many(sample_fees)
+        if sample_fees:
+            await db.fees.insert_many(sample_fees)
         
         return {"message": "Data sampel berhasil dibuat"}
 

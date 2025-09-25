@@ -6,7 +6,7 @@ from app.models.schemas import (
 )
 from app.config.database import get_database
 from app.services.midtrans_service import MidtransService
-from datetime import datetime
+from datetime import datetime, timezone
 import uuid
 import logging
 
@@ -95,7 +95,7 @@ class PaymentController:
                             'midtrans_status': midtrans_result.get('status', 'pending')
                         }
                         if mapped_status == 'Success':
-                            update_data['settled_at'] = datetime.utcnow()
+                            update_data['settled_at'] = datetime.now(timezone.utc)
                             await db.fees.update_one(
                                 {"id": payment["fee_id"]},
                                 {"$set": {"status": "Lunas"}}
@@ -209,7 +209,7 @@ class PaymentController:
                     }
                     
                     if new_status == "Success":
-                        update_data["settled_at"] = datetime.utcnow()
+                        update_data["settled_at"] = datetime.now(timezone.utc)
                         await db.fees.update_one(
                             {"id": payment["fee_id"]},
                             {"$set": {"status": "Lunas"}}
@@ -267,7 +267,7 @@ class PaymentController:
                 }
                 
                 if new_status == "Success":
-                    update_data["settled_at"] = datetime.utcnow()
+                    update_data["settled_at"] = datetime.now(timezone.utc)
                     await db.fees.update_one(
                         {"id": payment["fee_id"]},
                         {"$set": {"status": "Lunas"}}

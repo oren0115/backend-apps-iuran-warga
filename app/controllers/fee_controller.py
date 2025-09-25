@@ -11,42 +11,58 @@ class FeeController:
         fees = await db.fees.find({"user_id": user_id}, {"_id": 0}).to_list(1000)
         return [FeeResponse(**fee) for fee in fees]
 
-    async def generate_monthly_fees(self, bulan: str) -> dict:
-        """Generate monthly fees for all users (admin only)"""
+    async def generate_monthly_fees(self, bulan: str, tarif_config: dict) -> dict:
+        """Generate monthly fees for all users (admin only)
+        Tarif IPL tidak di-hardcode; diterima dari frontend via tarif_config.
+        tarif_config keys: 60M2, 72M2, HOOK (case-insensitive supported)
+        """
         db = get_database()
         
         # Get all non-admin users
         users = await db.users.find({"is_admin": False}).to_list(1000)
         
-        fee_categories = [
-            {"kategori": "Keamanan", "nominal": 50000},
-            {"kategori": "Kebersihan", "nominal": 30000},
-            {"kategori": "Kas", "nominal": 20000}
-        ]
-        
         fees_created = 0
         for user in users:
-            for category in fee_categories:
-                # Check if fee already exists
-                existing_fee = await db.fees.find_one({
+            tipe = (user.get("tipe_rumah") or "").upper()
+            # Normalisasi tipe agar sesuai keys config
+            if tipe in ["60M2", "60", "60 M2", "TYPE 60", "TYPE60"]:
+                key = "60M2"
+            elif tipe in ["72M2", "72", "72 M2", "TYPE 72", "TYPE72"]:
+                key = "72M2"
+            elif tipe in ["HOOK", "TYPE HOOK", "TIPE HOOK"]:
+                key = "HOOK"
+            else:
+                # Jika tipe tidak dikenali, lewati pembuatan tagihan untuk user tsb
+                continue
+
+            # Ambil nominal dari tarif_config; dukung variasi key case
+            nominal = (
+                tarif_config.get(key)
+                or tarif_config.get(key.lower())
+                or tarif_config.get(key.capitalize())
+            )
+            if not isinstance(nominal, int) or nominal <= 0:
+                continue
+
+            # Buat satu tagihan IPL per user per bulan berdasarkan tipe rumah
+            existing_fee = await db.fees.find_one({
+                "user_id": user["id"],
+                "kategori": key,  # simpan kategori sebagai tipe rumah
+                "bulan": bulan
+            })
+            if not existing_fee:
+                fee_dict = {
+                    "id": str(uuid.uuid4()),
                     "user_id": user["id"],
-                    "kategori": category["kategori"],
-                    "bulan": bulan
-                })
-                
-                if not existing_fee:
-                    fee_dict = {
-                        "id": str(uuid.uuid4()),
-                        "user_id": user["id"],
-                        "kategori": category["kategori"],
-                        "nominal": category["nominal"],
-                        "bulan": bulan,
-                        "status": "Belum Bayar",
-                        "due_date": datetime.utcnow() + timedelta(days=30),
-                        "created_at": datetime.utcnow()
-                    }
-                    await db.fees.insert_one(fee_dict)
-                    fees_created += 1
+                    "kategori": key,
+                    "nominal": nominal,
+                    "bulan": bulan,
+                    "status": "Belum Bayar",
+                    "due_date": datetime.utcnow() + timedelta(days=30),
+                    "created_at": datetime.utcnow()
+                }
+                await db.fees.insert_one(fee_dict)
+                fees_created += 1
         
         return {"message": f"{fees_created} tagihan berhasil dibuat untuk bulan {bulan}"}
 

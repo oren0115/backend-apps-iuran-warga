@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field, validator
 from typing import List, Optional, Union
-from datetime import datetime
+from datetime import datetime, timezone
 import uuid
 
 # -------------------------
@@ -12,9 +12,21 @@ class UserBase(BaseModel):
     alamat: str
     nomor_rumah: str
     nomor_hp: str
+    # Optional: tipe rumah pengguna, contoh: "60M2", "72M2", "HOOK"
+    tipe_rumah: Optional[str] = None
 
 class UserCreate(UserBase):
     password: str
+
+class UserUpdate(BaseModel):
+    nama: Optional[str] = None
+    alamat: Optional[str] = None
+    nomor_rumah: Optional[str] = None
+    nomor_hp: Optional[str] = None
+    tipe_rumah: Optional[str] = None
+
+class PasswordUpdate(BaseModel):
+    new_password: str
 
 class UserLogin(BaseModel):
     username: str
@@ -24,7 +36,7 @@ class User(UserBase):
     id: Optional[str] = Field(default_factory=lambda: str(uuid.uuid4()))
     password: str
     is_admin: bool = False
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 class UserResponse(UserBase):
     id: str
@@ -49,7 +61,7 @@ class Fee(FeeBase):
     user_id: str
     status: str = "Belum Bayar"
     due_date: datetime
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 class FeeResponse(FeeBase):
     id: str
@@ -74,7 +86,7 @@ class Payment(PaymentBase):
     user_id: str
     order_id: Optional[str] = None
     status: str = "Pending"
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
     # Midtrans fields
     transaction_id: Optional[str] = None
@@ -109,10 +121,14 @@ class PaymentResponse(PaymentBase):
     def parse_datetime(cls, v):
         if isinstance(v, str):
             try:
-                return datetime.fromisoformat(v)
+                dt = datetime.fromisoformat(v)
+                if dt.tzinfo is None:
+                    dt = dt.replace(tzinfo=timezone.utc)
+                return dt
             except Exception:
                 try:
-                    return datetime.strptime(v, "%Y-%m-%d %H:%M:%S")
+                    dt = datetime.strptime(v, "%Y-%m-%d %H:%M:%S")
+                    return dt.replace(tzinfo=timezone.utc)
                 except Exception:
                     return None
         return v
@@ -133,7 +149,7 @@ class Notification(NotificationBase):
     id: Optional[str] = Field(default_factory=lambda: str(uuid.uuid4()))
     user_id: str
     is_read: bool = False
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 class NotificationResponse(NotificationBase):
     id: str
@@ -149,6 +165,10 @@ class MessageResponse(BaseModel):
 
 class GenerateFeesRequest(BaseModel):
     bulan: str
+    # Tarif IPL per tipe rumah; dikirim dari frontend
+    tarif_60m2: int
+    tarif_72m2: int
+    tarif_hook: int
 
 # -------------------------
 # Midtrans Models

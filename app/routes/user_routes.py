@@ -1,14 +1,14 @@
 from fastapi import APIRouter, Depends
-from app.models.schemas import UserCreate, UserLogin, UserResponse, LoginResponse, MessageResponse
+from app.models.schemas import UserCreate, UserLogin, UserResponse, LoginResponse, MessageResponse, UserUpdate
 from app.controllers.user_controller import UserController
-from app.utils.auth import get_current_user
+from app.utils.auth import get_current_user, get_current_admin
 
 router = APIRouter()
 user_controller = UserController()
 
 @router.post("/register", response_model=UserResponse)
-async def register(user_data: UserCreate):
-    """Register a new user"""
+async def register(user_data: UserCreate, current_user = Depends(get_current_admin)):
+    """Register a new user (admin only)"""
     return await user_controller.register_user(user_data)
 
 @router.post("/login", response_model=LoginResponse)
@@ -21,7 +21,12 @@ async def get_profile(current_user = Depends(get_current_user)):
     """Get current user profile"""
     return await user_controller.get_user_profile(current_user)
 
+@router.put("/profile", response_model=UserResponse)
+async def update_profile(data: UserUpdate, current_user = Depends(get_current_admin)):
+    """Update current user profile (admin only)"""
+    return await user_controller.update_user_profile(current_user, data)
+
 @router.put("/toggle-admin", response_model=MessageResponse)
-async def toggle_admin(current_user = Depends(get_current_user)):
-    """Toggle user admin status (for testing purposes)"""
+async def toggle_admin(current_user = Depends(get_current_admin)):
+    """Toggle user admin status (admin only, for testing purposes)"""
     return await user_controller.toggle_admin_status(current_user)

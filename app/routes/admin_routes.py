@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, Query
 from fastapi.responses import StreamingResponse
 from app.models.schemas import (
     UserResponse, FeeResponse, PaymentResponse, MessageResponse, 
-    GenerateFeesRequest, NotificationResponse
+    GenerateFeesRequest, NotificationResponse, UserUpdate, PasswordUpdate
 )
 from app.controllers.user_controller import UserController
 from app.controllers.fee_controller import FeeController
@@ -10,6 +10,7 @@ from app.controllers.payment_controller import PaymentController
 from app.controllers.notification_controller import NotificationController
 from app.controllers.admin_controller import AdminController
 from app.utils.auth import get_current_admin
+from fastapi import Path
 from typing import List
 from datetime import datetime, date
 import io
@@ -28,11 +29,36 @@ async def get_all_users(current_user = Depends(get_current_admin)):
     """Get all users (admin only)"""
     return await user_controller.get_all_users()
 
+@router.put("/users/{user_id}", response_model=UserResponse)
+async def update_user_profile_admin(
+    user_id: str = Path(..., description="ID pengguna"),
+    updates: UserUpdate = None,
+    current_user = Depends(get_current_admin)
+):
+    """Update user profile by id (admin only)"""
+    return await user_controller.update_user_by_id(user_id, updates)
+
+@router.put("/users/{user_id}/password", response_model=MessageResponse)
+async def update_user_password_admin(
+    user_id: str = Path(..., description="ID pengguna"),
+    payload: PasswordUpdate = None,
+    current_user = Depends(get_current_admin)
+):
+    """Update user password by id (admin only)"""
+    return await user_controller.update_user_password_by_id(user_id, payload)
+
 # Fee Management
 @router.post("/generate-fees", response_model=MessageResponse)
 async def generate_monthly_fees(request: GenerateFeesRequest, current_user = Depends(get_current_admin)):
-    """Generate monthly fees for all users (admin only)"""
-    return await fee_controller.generate_monthly_fees(request.bulan)
+    """Generate monthly fees for all users (admin only)
+    Tarif IPL dikirim dari frontend berdasarkan tipe rumah.
+    """
+    tarif_config = {
+        "60M2": request.tarif_60m2,
+        "72M2": request.tarif_72m2,
+        "HOOK": request.tarif_hook,
+    }
+    return await fee_controller.generate_monthly_fees(request.bulan, tarif_config)
 
 @router.get("/fees", response_model=List[FeeResponse])
 async def get_all_fees(current_user = Depends(get_current_admin)):
