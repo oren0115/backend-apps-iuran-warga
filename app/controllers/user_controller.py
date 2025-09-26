@@ -28,6 +28,7 @@ class UserController:
         user_dict["is_admin"] = False
         user_dict["created_at"] = datetime.utcnow()
         
+        
         await db.users.insert_one(user_dict)
         
         return UserResponse(**{k: v for k, v in user_dict.items() if k != "password"})
@@ -106,3 +107,38 @@ class UserController:
         if result.matched_count == 0:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User tidak ditemukan")
         return {"message": "Password pengguna berhasil diperbarui"}
+
+    async def delete_user_by_id(self, user_id: str) -> dict:
+        """Delete a user by id (admin only)"""
+        db = get_database()
+        result = await db.users.delete_one({"id": user_id})
+        if result.deleted_count == 0:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User tidak ditemukan")
+        return {"message": "User berhasil dihapus"}
+
+    async def promote_user_to_admin(self, user_id: str) -> UserResponse:
+        """Promote a user to admin (admin only)"""
+        db = get_database()
+        result = await db.users.update_one({"id": user_id}, {"$set": {"is_admin": True}})
+        if result.matched_count == 0:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User tidak ditemukan")
+        user = await db.users.find_one({"id": user_id})
+        return UserResponse(**{k: v for k, v in user.items() if k != "password"})
+
+    async def demote_user_from_admin(self, user_id: str) -> UserResponse:
+        """Demote a user from admin (admin only)"""
+        db = get_database()
+        result = await db.users.update_one({"id": user_id}, {"$set": {"is_admin": False}})
+        if result.matched_count == 0:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User tidak ditemukan")
+        user = await db.users.find_one({"id": user_id})
+        return UserResponse(**{k: v for k, v in user.items() if k != "password"})
+
+    async def reset_user_password_by_id(self, user_id: str, new_password: str) -> dict:
+        """Reset a user's password by id (admin only)"""
+        db = get_database()
+        hashed = self.auth_manager.hash_password(new_password)
+        result = await db.users.update_one({"id": user_id}, {"$set": {"password": hashed}})
+        if result.matched_count == 0:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User tidak ditemukan")
+        return {"message": "Password pengguna berhasil direset"}
