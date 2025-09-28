@@ -7,7 +7,7 @@ from app.config.database import get_database
 
 # Security
 security = HTTPBearer()
-JWT_SECRET = "rt_rw_secret_key_123"
+JWT_SECRET = ""
 JWT_ALGORITHM = "HS256"
 
 class AuthManager:
