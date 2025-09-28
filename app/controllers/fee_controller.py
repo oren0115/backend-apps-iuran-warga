@@ -93,3 +93,52 @@ class FeeController:
             return {"message": "Tagihan tidak ditemukan atau tidak ada perubahan"}
         
         return {"message": "Status tagihan berhasil diubah"}
+
+    async def regenerate_fees_for_month(self, bulan: str, tarif_config: dict) -> dict:
+        """Regenerate fees for a specific month based on current user house types (admin only)"""
+        db = get_database()
+        
+        # Delete existing fees for the month
+        await db.fees.delete_many({"bulan": bulan})
+        
+        # Get all non-admin users
+        users = await db.users.find({"is_admin": False}).to_list(1000)
+        
+        fees_created = 0
+        for user in users:
+            tipe = (user.get("tipe_rumah") or "").upper()
+            # Normalisasi tipe agar sesuai keys config
+            if tipe in ["60M2", "60", "60 M2", "TYPE 60", "TYPE60"]:
+                key = "60M2"
+            elif tipe in ["72M2", "72", "72 M2", "TYPE 72", "TYPE72"]:
+                key = "72M2"
+            elif tipe in ["HOOK", "TYPE HOOK", "TIPE HOOK"]:
+                key = "HOOK"
+            else:
+                # Jika tipe tidak dikenali, lewati pembuatan tagihan untuk user tsb
+                continue
+
+            # Ambil nominal dari tarif_config; dukung variasi key case
+            nominal = (
+                tarif_config.get(key)
+                or tarif_config.get(key.lower())
+                or tarif_config.get(key.capitalize())
+            )
+            if not isinstance(nominal, int) or nominal <= 0:
+                continue
+
+            # Buat tagihan IPL per user per bulan berdasarkan tipe rumah
+            fee_dict = {
+                "id": str(uuid.uuid4()),
+                "user_id": user["id"],
+                "kategori": key,
+                "nominal": nominal,
+                "bulan": bulan,
+                "status": "Belum Bayar",
+                "due_date": datetime.utcnow() + timedelta(days=30),
+                "created_at": datetime.utcnow()
+            }
+            await db.fees.insert_one(fee_dict)
+            fees_created += 1
+        
+        return {"message": f"{fees_created} tagihan berhasil dibuat ulang untuk bulan {bulan}"}
