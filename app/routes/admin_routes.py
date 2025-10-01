@@ -293,7 +293,7 @@ async def export_payments(
             current_time = datetime.now().strftime("%d %B %Y %H:%M:%S")
             worksheet.merge_range('A3:H3', f'Periode: {start} s.d {end}', subheader_format)
             worksheet.merge_range('A4:H4', f'Dibuat pada: {current_time}', info_format)
-            worksheet.merge_range('A5:H5', f'Dibuat oleh: {current_user.username}', info_format)
+            worksheet.merge_range('A5:H5', f'Dibuat oleh: {current_user.get("username", "Unknown")}', info_format)
             worksheet.merge_range('A6:H6', f'Total Data: {len(export_data)} transaksi', info_format)
             worksheet.merge_range('A7:H7', '', info_format)  # Empty row
             
@@ -356,7 +356,7 @@ async def export_payments(
         info_data = [
             [f"Periode: {start} s.d {end}"],
             [f"Dibuat pada: {current_time}"],
-            [f"Dibuat oleh: {current_user.username}"],
+            [f"Dibuat oleh: {current_user.get('username', 'Unknown')}"],
             [f"Total Data: {len(export_data)} transaksi"]
         ]
         
