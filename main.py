@@ -17,6 +17,7 @@ app.add_middleware(
         "http://localhost:5173",
         "http://127.0.0.1:5173",
         "https://iuran-warga-phi.vercel.app",
+        "http://localhost:60132",
     ],
     allow_methods=["*"],
     allow_headers=["*"],

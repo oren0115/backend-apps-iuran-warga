@@ -136,7 +136,11 @@ async def get_dashboard_stats(current_user = Depends(get_current_admin)):
     """Get dashboard statistics (admin only)"""
     return await admin_controller.get_dashboard_stats()
 
-# Endpoint init-sample-data telah dihapus karena tidak lagi menggunakan data dummy
+# Sample Data
+@router.post("/init-sample-data", response_model=MessageResponse)
+async def init_sample_data():
+    """Initialize sample data for testing"""
+    return await admin_controller.init_sample_data()
 
 # Reports Export
 @router.get("/reports/fees/export")
