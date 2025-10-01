@@ -256,7 +256,7 @@ async def export_payments(
         buffer = io.BytesIO()
         with pd.ExcelWriter(buffer, engine="xlsxwriter") as writer:
             # First, write the DataFrame to create the worksheet
-            df.to_excel(writer, index=False, sheet_name="Payments", startrow=7)
+            df.to_excel(writer, index=False, sheet_name="Payments", startrow=8)
             
             # Now get the workbook and worksheet
             workbook = writer.book
@@ -286,7 +286,7 @@ async def export_payments(
             })
             
             # Add header information
-            worksheet.merge_range('A1:H1', 'LAPORAN PEMBAYARAN IPL CANNART', header_format)
+            worksheet.merge_range('A1:H1', 'LAPORAN PEMBAYARAN IPL CANNARY', header_format)
             worksheet.merge_range('A2:H2', '', info_format)  # Empty row
             
             # Add export information
@@ -314,8 +314,8 @@ async def export_payments(
                 'valign': 'vcenter'
             })
             
-            # Apply border to data rows
-            for row in range(8, 8 + len(export_data) + 1):
+            # Apply border to data rows (starting from row 9 since data starts at row 9)
+            for row in range(9, 9 + len(export_data) + 1):
                 for col in range(8):
                     worksheet.write(row, col, '', data_format)
             
@@ -347,7 +347,7 @@ async def export_payments(
         story = []
         
         # Add title
-        title = Paragraph("LAPORAN PEMBAYARAN IPL CANNART", styles['Title'])
+        title = Paragraph("LAPORAN PEMBAYARAN IPL CANNARY", styles['Title'])
         story.append(title)
         story.append(Spacer(1, 12))
         
@@ -402,7 +402,7 @@ async def export_payments(
             buffer,
             media_type="application/pdf",
             headers={
-                "Content-Disposition": f'attachment; filename="Laporan_Pembayaran_IPL_Cannart_{start}_{end}.pdf"',
+                "Content-Disposition": f'attachment; filename="Laporan_Pembayaran_IPL_Cannary_{start}_{end}.pdf"',
                 "Access-Control-Allow-Origin": "*",
                 "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
                 "Access-Control-Allow-Headers": "Content-Type, Authorization",
@@ -489,7 +489,7 @@ async def export_payments_test(
             buffer = io.BytesIO()
             with pd.ExcelWriter(buffer, engine="xlsxwriter") as writer:
                 # First, write the DataFrame to create the worksheet
-                df.to_excel(writer, index=False, sheet_name="Payments", startrow=7)
+                df.to_excel(writer, index=False, sheet_name="Payments", startrow=8)
                 
                 # Now get the workbook and worksheet
                 workbook = writer.book
@@ -625,7 +625,7 @@ async def export_payments_no_auth(
             buffer = io.BytesIO()
             with pd.ExcelWriter(buffer, engine="xlsxwriter") as writer:
                 # First, write the DataFrame to create the worksheet
-                df.to_excel(writer, index=False, sheet_name="Payments", startrow=7)
+                df.to_excel(writer, index=False, sheet_name="Payments", startrow=8)
                 
                 # Now get the workbook and worksheet
                 workbook = writer.book
@@ -675,6 +675,18 @@ async def export_payments_no_auth(
                 worksheet.set_column('F:F', 20)  # Tanggal Pembayaran
                 worksheet.set_column('G:G', 25)  # ID Pembayaran
                 worksheet.set_column('H:H', 50)  # URL Pembayaran
+                
+                # Add border to data area
+                data_format = workbook.add_format({
+                    'border': 1,
+                    'align': 'left',
+                    'valign': 'vcenter'
+                })
+                
+                # Apply border to data rows (starting from row 9 since data starts at row 9)
+                for row in range(9, 9 + len(export_data) + 1):
+                    for col in range(8):
+                        worksheet.write(row, col, '', data_format)
                 
             buffer.seek(0)
             return StreamingResponse(
