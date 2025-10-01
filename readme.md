@@ -24,12 +24,44 @@ Sistem manajemen iuran RT/RW berbasis FastAPI untuk mengelola pembayaran iuran b
 - **Pandas** - Data processing untuk export laporan
 - **ReportLab** - PDF generation
 - **XlsxWriter** - Excel export
+- **OpenPyXL** - Excel file handling
+- **PyJWT** - JWT token handling
+- **Python-dotenv** - Environment variable management
+- **Pyngrok** - Ngrok integration for development
 
 ## 📋 Prerequisites
 
 - Python 3.8+
 - MongoDB 4.0+
 - pip (Python package manager)
+
+## 📦 Dependencies
+
+### Core Dependencies
+
+- `fastapi==0.104.1` - Web framework
+- `uvicorn==0.24.0` - ASGI server
+- `motor==3.3.2` - Async MongoDB driver
+- `pymongo==4.6.0` - MongoDB driver
+- `pydantic==2.9.2` - Data validation
+- `PyJWT==2.8.0` - JWT token handling
+- `python-dotenv==1.0.0` - Environment variables
+
+### Payment & External Services
+
+- `midtransclient==1.4.2` - Midtrans payment gateway
+- `pyngrok==7.3.0` - Ngrok integration
+
+### Data Processing & Export
+
+- `pandas==2.2.3` - Data manipulation
+- `XlsxWriter==3.2.0` - Excel export
+- `openpyxl==3.1.2` - Excel file handling
+- `reportlab==4.2.2` - PDF generation
+
+### Framework Dependencies
+
+- `starlette==0.27.0` - ASGI framework (FastAPI dependency)
 
 ## 🔧 Instalasi
 
@@ -235,26 +267,28 @@ uvicorn main:app --host 0.0.0.0 --port 8000
 ### Render Deployment
 
 **Build Command:**
+
 ```bash
 pip install --upgrade pip && pip install -r requirements.txt
 ```
 
 **Start Command:**
+
 ```bash
 cd backend && uvicorn main:app --host 0.0.0.0 --port $PORT
 ```
 
 ## 🔒 Environment Variables
 
-| Variable                | Description                    | Default                     |
-| ----------------------- | ------------------------------ | --------------------------- |
-| `MONGO_URL`             | MongoDB connection string      | `mongodb://localhost:27017` |
-| `DB_NAME`               | Database name                  | `rt_rw_management`          |
-| `JWT_SECRET_KEY`        | Secret key for JWT             | Required                    |
-| `JWT_ALGORITHM`         | JWT algorithm                  | `HS256`                     |
-| `MIDTRANS_SERVER_KEY`   | Midtrans server key            | Required                    |
-| `MIDTRANS_CLIENT_KEY`   | Midtrans client key            | Required                    |
-| `MIDTRANS_IS_PRODUCTION`| Midtrans production mode       | `false`                     |
+| Variable                 | Description               | Default                     |
+| ------------------------ | ------------------------- | --------------------------- |
+| `MONGO_URL`              | MongoDB connection string | `mongodb://localhost:27017` |
+| `DB_NAME`                | Database name             | `rt_rw_management`          |
+| `JWT_SECRET_KEY`         | Secret key for JWT        | Required                    |
+| `JWT_ALGORITHM`          | JWT algorithm             | `HS256`                     |
+| `MIDTRANS_SERVER_KEY`    | Midtrans server key       | Required                    |
+| `MIDTRANS_CLIENT_KEY`    | Midtrans client key       | Required                    |
+| `MIDTRANS_IS_PRODUCTION` | Midtrans production mode  | `false`                     |
 
 ## 📝 Usage Examples
 
@@ -326,6 +360,40 @@ curl -X GET "http://localhost:8000/api/admin/reports/fees/export?bulan=2024-01&f
 ## 📄 License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
+
+## 🔧 Troubleshooting
+
+### Common Issues
+
+1. **Database Connection Error**
+
+   - Pastikan MongoDB sudah berjalan
+   - Periksa koneksi string di file `.env`
+   - Pastikan database name sudah benar
+
+2. **JWT Token Error**
+
+   - Periksa `JWT_SECRET_KEY` di file `.env`
+   - Pastikan token tidak expired
+   - Restart aplikasi setelah mengubah secret key
+
+3. **Midtrans Integration Error**
+
+   - Periksa `MIDTRANS_SERVER_KEY` dan `MIDTRANS_CLIENT_KEY`
+   - Pastikan mode production/sandbox sudah benar
+   - Periksa webhook URL configuration
+
+4. **Import/Export Error**
+   - Pastikan semua dependencies sudah terinstall
+   - Periksa permission untuk menulis file
+   - Pastikan format data sudah benar
+
+### Development Tips
+
+- Gunakan `uvicorn main:app --reload` untuk auto-reload
+- Periksa logs di terminal untuk debugging
+- Gunakan MongoDB Compass untuk melihat data
+- Test API endpoints menggunakan Swagger UI
 
 ## 📞 Support
 
