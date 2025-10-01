@@ -228,8 +228,8 @@ async def export_payments(
                     "Metode Pembayaran": payment.payment_method or "",
                     "Status": payment.status or "",
                     "Tanggal Pembayaran": created_at_str,
-                    "ID Pembayaran": payment.transaction_id or "",
-                    "URL Pembayaran": payment.payment_url or ""
+                    # "ID Pembayaran": payment.transaction_id or "",
+                    # "URL Pembayaran": payment.payment_url or ""
                 }
                 export_data.append(export_record)
             except Exception as e:
@@ -242,8 +242,8 @@ async def export_payments(
                     "Metode Pembayaran": "",
                     "Status": "Error",
                     "Tanggal Pembayaran": "",
-                    "ID Pembayaran": "",
-                    "URL Pembayaran": ""
+                    # "ID Pembayaran": "",
+                    # "URL Pembayaran": ""
                 }
                 export_data.append(export_record)
         
@@ -290,16 +290,16 @@ async def export_payments(
             })
             
             # Add header information
-            worksheet.merge_range('A1:H1', 'LAPORAN PEMBAYARAN IPL CANNARY', header_format)
-            worksheet.merge_range('A2:H2', '', info_format)  # Empty row
+            worksheet.merge_range('A1:F1', 'LAPORAN PEMBAYARAN IPL CANNARY', header_format)
+            worksheet.merge_range('A2:F2', '', info_format)  # Empty row
             
             # Add export information
             current_time = datetime.now().strftime("%d %B %Y %H:%M:%S")
-            worksheet.merge_range('A3:H3', f'Periode: {start} s.d {end}', subheader_format)
-            worksheet.merge_range('A4:H4', f'Dibuat pada: {current_time}', info_format)
-            worksheet.merge_range('A5:H5', f'Dibuat oleh: {current_user.get("username", "Unknown")}', info_format)
-            worksheet.merge_range('A6:H6', f'Total Data: {len(export_data)} transaksi', info_format)
-            worksheet.merge_range('A7:H7', '', info_format)  # Empty row
+            worksheet.merge_range('A3:F3', f'Periode: {start} s.d {end}', subheader_format)
+            worksheet.merge_range('A4:F4', f'Dibuat pada: {current_time}', info_format)
+            worksheet.merge_range('A5:F5', f'Dibuat oleh: {current_user.get("username", "Unknown")}', info_format)
+            worksheet.merge_range('A6:F6', f'Total Data: {len(export_data)} transaksi', info_format)
+            worksheet.merge_range('A7:F7', '', info_format)  # Empty row
             
             # Adjust column widths
             worksheet.set_column('A:A', 15)  # ID
@@ -308,8 +308,8 @@ async def export_payments(
             worksheet.set_column('D:D', 18)  # Metode Pembayaran
             worksheet.set_column('E:E', 12)  # Status
             worksheet.set_column('F:F', 20)  # Tanggal Pembayaran
-            worksheet.set_column('G:G', 25)  # ID Pembayaran
-            worksheet.set_column('H:H', 50)  # URL Pembayaran
+            # worksheet.set_column('G:G', 25)  # ID Pembayaran
+            # worksheet.set_column('H:H', 50)  # URL Pembayaran
             
             # Add table styling for data area (starting from row 8, which is row 9 in Excel)
             if len(export_data) > 0:
@@ -426,288 +426,288 @@ async def export_payments_options():
     )
 
 # Test endpoint without authentication for debugging
-@router.get("/reports/payments/export-test", include_in_schema=False)
-async def export_payments_test(
-    start: date = Query(..., description="Start date YYYY-MM-DD"),
-    end: date = Query(..., description="End date YYYY-MM-DD"),
-    format: str = Query("excel", pattern="^(excel|pdf)$"),
-):
-    try:
-        print(f"Export request: start={start}, end={end}, format={format}")
-        start_dt = datetime.combine(start, datetime.min.time())
-        end_dt = datetime.combine(end, datetime.max.time())
-        print(f"Date range: {start_dt} to {end_dt}")
+# @router.get("/reports/payments/export-test", include_in_schema=False)
+# async def export_payments_test(
+#     start: date = Query(..., description="Start date YYYY-MM-DD"),
+#     end: date = Query(..., description="End date YYYY-MM-DD"),
+#     format: str = Query("excel", pattern="^(excel|pdf)$"),
+# ):
+#     try:
+#         print(f"Export request: start={start}, end={end}, format={format}")
+#         start_dt = datetime.combine(start, datetime.min.time())
+#         end_dt = datetime.combine(end, datetime.max.time())
+#         print(f"Date range: {start_dt} to {end_dt}")
         
-        data = await payment_controller.get_payments_by_date_range(start_dt, end_dt)
-        print(f"Found {len(data)} payments")
+#         data = await payment_controller.get_payments_by_date_range(start_dt, end_dt)
+#         print(f"Found {len(data)} payments")
         
-        # Get user data for each payment
-        db = get_database()
-        export_data = []
+#         # Get user data for each payment
+#         db = get_database()
+#         export_data = []
         
-        for payment in data:
-            try:
-                # Get user information
-                user = await db.users.find_one({"id": payment.user_id}, {"_id": 0})
-                username = user.get("username", "Unknown") if user else "Unknown"
+#         for payment in data:
+#             try:
+#                 # Get user information
+#                 user = await db.users.find_one({"id": payment.user_id}, {"_id": 0})
+#                 username = user.get("username", "Unknown") if user else "Unknown"
                 
-                # Format created_at to readable string
-                if hasattr(payment.created_at, 'strftime'):
-                    created_at_str = payment.created_at.strftime("%Y-%m-%d %H:%M:%S")
-                elif isinstance(payment.created_at, str):
-                    created_at_str = payment.created_at
-                else:
-                    created_at_str = str(payment.created_at)
+#                 # Format created_at to readable string
+#                 if hasattr(payment.created_at, 'strftime'):
+#                     created_at_str = payment.created_at.strftime("%Y-%m-%d %H:%M:%S")
+#                 elif isinstance(payment.created_at, str):
+#                     created_at_str = payment.created_at
+#                 else:
+#                     created_at_str = str(payment.created_at)
                 
-                # Create export record with only required fields
-                export_record = {
-                    "ID": payment.id or "",
-                    "Username": username,
-                    "Jumlah Pembayaran": payment.amount or 0,
-                    "Metode Pembayaran": payment.payment_method or "",
-                    "Status": payment.status or "",
-                    "Tanggal Pembayaran": created_at_str,
-                    "ID Pembayaran": payment.transaction_id or "",
-                    "URL Pembayaran": payment.payment_url or ""
-                }
-                export_data.append(export_record)
-            except Exception as e:
-                print(f"Error processing payment {payment.id}: {str(e)}")
-                # Add a basic record even if there's an error
-                export_record = {
-                    "ID": payment.id or "",
-                    "Username": "Error",
-                    "Jumlah Pembayaran": 0,
-                    "Metode Pembayaran": "",
-                    "Status": "Error",
-                    "Tanggal Pembayaran": "",
-                    "ID Pembayaran": "",
-                    "URL Pembayaran": ""
-                }
-                export_data.append(export_record)
+#                 # Create export record with only required fields
+#                 export_record = {
+#                     "ID": payment.id or "",
+#                     "Username": username,
+#                     "Jumlah Pembayaran": payment.amount or 0,
+#                     "Metode Pembayaran": payment.payment_method or "",
+#                     "Status": payment.status or "",
+#                     "Tanggal Pembayaran": created_at_str,
+#                     "ID Pembayaran": payment.transaction_id or "",
+#                     "URL Pembayaran": payment.payment_url or ""
+#                 }
+#                 export_data.append(export_record)
+#             except Exception as e:
+#                 print(f"Error processing payment {payment.id}: {str(e)}")
+#                 # Add a basic record even if there's an error
+#                 export_record = {
+#                     "ID": payment.id or "",
+#                     "Username": "Error",
+#                     "Jumlah Pembayaran": 0,
+#                     "Metode Pembayaran": "",
+#                     "Status": "Error",
+#                     "Tanggal Pembayaran": "",
+#                     "ID Pembayaran": "",
+#                     "URL Pembayaran": ""
+#                 }
+#                 export_data.append(export_record)
         
-        df = pd.DataFrame(export_data)
+#         df = pd.DataFrame(export_data)
         
-        if format == "excel":
-            buffer = io.BytesIO()
-            with pd.ExcelWriter(buffer, engine="xlsxwriter") as writer:
-                # First, write the DataFrame to create the worksheet
-                df.to_excel(writer, index=False, sheet_name="Payments", startrow=8)
+#         if format == "excel":
+#             buffer = io.BytesIO()
+#             with pd.ExcelWriter(buffer, engine="xlsxwriter") as writer:
+#                 # First, write the DataFrame to create the worksheet
+#                 df.to_excel(writer, index=False, sheet_name="Payments", startrow=8)
                 
-                # Now get the workbook and worksheet
-                workbook = writer.book
-                worksheet = writer.sheets["Payments"]
+#                 # Now get the workbook and worksheet
+#                 workbook = writer.book
+#                 worksheet = writer.sheets["Payments"]
                 
-                # Define formats
-                header_format = workbook.add_format({
-                    'bold': True,
-                    'font_size': 16,
-                    'align': 'center',
-                    'valign': 'vcenter',
-                    'bg_color': '#4CAF50',
-                    'font_color': 'white'
-                })
+#                 # Define formats
+#                 header_format = workbook.add_format({
+#                     'bold': True,
+#                     'font_size': 16,
+#                     'align': 'center',
+#                     'valign': 'vcenter',
+#                     'bg_color': '#4CAF50',
+#                     'font_color': 'white'
+#                 })
                 
-                subheader_format = workbook.add_format({
-                    'bold': True,
-                    'font_size': 12,
-                    'align': 'left',
-                    'valign': 'vcenter'
-                })
+#                 subheader_format = workbook.add_format({
+#                     'bold': True,
+#                     'font_size': 12,
+#                     'align': 'left',
+#                     'valign': 'vcenter'
+#                 })
                 
-                info_format = workbook.add_format({
-                    'font_size': 10,
-                    'align': 'left',
-                    'valign': 'vcenter'
-                })
+#                 info_format = workbook.add_format({
+#                     'font_size': 10,
+#                     'align': 'left',
+#                     'valign': 'vcenter'
+#                 })
                 
-                # Add header information
-                worksheet.merge_range('A1:H1', 'LAPORAN PEMBAYARAN IPL CANNART', header_format)
-                worksheet.merge_range('A2:H2', '', info_format)  # Empty row
+#                 # Add header information
+#                 worksheet.merge_range('A1:H1', 'LAPORAN PEMBAYARAN IPL CANNART', header_format)
+#                 worksheet.merge_range('A2:H2', '', info_format)  # Empty row
                 
-                # Add export information
-                current_time = datetime.now().strftime("%d %B %Y %H:%M:%S")
-                worksheet.merge_range('A3:H3', f'Periode: {start} s.d {end}', subheader_format)
-                worksheet.merge_range('A4:H4', f'Dibuat pada: {current_time}', info_format)
-                worksheet.merge_range('A5:H5', f'Dibuat oleh: Test User', info_format)
-                worksheet.merge_range('A6:H6', f'Total Data: {len(export_data)} transaksi', info_format)
-                worksheet.merge_range('A7:H7', '', info_format)  # Empty row
+#                 # Add export information
+#                 current_time = datetime.now().strftime("%d %B %Y %H:%M:%S")
+#                 worksheet.merge_range('A3:H3', f'Periode: {start} s.d {end}', subheader_format)
+#                 worksheet.merge_range('A4:H4', f'Dibuat pada: {current_time}', info_format)
+#                 worksheet.merge_range('A5:H5', f'Dibuat oleh: Test User', info_format)
+#                 worksheet.merge_range('A6:H6', f'Total Data: {len(export_data)} transaksi', info_format)
+#                 worksheet.merge_range('A7:H7', '', info_format)  # Empty row
                 
-                # Adjust column widths
-                worksheet.set_column('A:A', 15)  # ID
-                worksheet.set_column('B:B', 15)  # Username
-                worksheet.set_column('C:C', 18)  # Jumlah Pembayaran
-                worksheet.set_column('D:D', 18)  # Metode Pembayaran
-                worksheet.set_column('E:E', 12)  # Status
-                worksheet.set_column('F:F', 20)  # Tanggal Pembayaran
-                worksheet.set_column('G:G', 25)  # ID Pembayaran
-                worksheet.set_column('H:H', 50)  # URL Pembayaran
+#                 # Adjust column widths
+#                 worksheet.set_column('A:A', 15)  # ID
+#                 worksheet.set_column('B:B', 15)  # Username
+#                 worksheet.set_column('C:C', 18)  # Jumlah Pembayaran
+#                 worksheet.set_column('D:D', 18)  # Metode Pembayaran
+#                 worksheet.set_column('E:E', 12)  # Status
+#                 worksheet.set_column('F:F', 20)  # Tanggal Pembayaran
+#                 worksheet.set_column('G:G', 25)  # ID Pembayaran
+#                 worksheet.set_column('H:H', 50)  # URL Pembayaran
                 
-            buffer.seek(0)
-            return StreamingResponse(
-                buffer,
-                media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                headers={"Content-Disposition": f'attachment; filename="Laporan_Pembayaran_IPL_Cannart_{start}_{end}.xlsx"'},
-            )
-        else:
-            return {"message": "PDF export not implemented for test endpoint", "data": export_data}
+#             buffer.seek(0)
+#             return StreamingResponse(
+#                 buffer,
+#                 media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+#                 headers={"Content-Disposition": f'attachment; filename="Laporan_Pembayaran_IPL_Cannart_{start}_{end}.xlsx"'},
+#             )
+#         else:
+#             return {"message": "PDF export not implemented for test endpoint", "data": export_data}
             
-    except Exception as e:
-        print(f"Error in export_payments_test: {str(e)}")
-        return {"error": str(e), "message": "Export test failed"}
+#     except Exception as e:
+#         print(f"Error in export_payments_test: {str(e)}")
+#         return {"error": str(e), "message": "Export test failed"}
 
 # Simple test endpoint
-@router.get("/test-export")
-async def test_export():
-    return {"message": "Export test endpoint is working", "status": "OK"}
+# @router.get("/test-export")
+# async def test_export():
+#     return {"message": "Export test endpoint is working", "status": "OK"}
 
 # Export endpoint without authentication for testing
-@router.get("/reports/payments/export-no-auth")
-async def export_payments_no_auth(
-    start: date = Query(..., description="Start date YYYY-MM-DD"),
-    end: date = Query(..., description="End date YYYY-MM-DD"),
-    format: str = Query("excel", pattern="^(excel|pdf)$"),
-):
-    try:
-        print(f"Export request (no auth): start={start}, end={end}, format={format}")
-        start_dt = datetime.combine(start, datetime.min.time())
-        end_dt = datetime.combine(end, datetime.max.time())
-        print(f"Date range: {start_dt} to {end_dt}")
+# @router.get("/reports/payments/export-no-auth")
+# async def export_payments_no_auth(
+#     start: date = Query(..., description="Start date YYYY-MM-DD"),
+#     end: date = Query(..., description="End date YYYY-MM-DD"),
+#     format: str = Query("excel", pattern="^(excel|pdf)$"),
+# ):
+#     try:
+#         print(f"Export request (no auth): start={start}, end={end}, format={format}")
+#         start_dt = datetime.combine(start, datetime.min.time())
+#         end_dt = datetime.combine(end, datetime.max.time())
+#         print(f"Date range: {start_dt} to {end_dt}")
         
-        data = await payment_controller.get_payments_by_date_range(start_dt, end_dt)
-        print(f"Found {len(data)} payments")
+#         data = await payment_controller.get_payments_by_date_range(start_dt, end_dt)
+#         print(f"Found {len(data)} payments")
         
-        # Get user data for each payment
-        db = get_database()
-        export_data = []
+#         # Get user data for each payment
+#         db = get_database()
+#         export_data = []
         
-        for payment in data:
-            try:
-                # Get user information
-                user = await db.users.find_one({"id": payment.user_id}, {"_id": 0})
-                username = user.get("username", "Unknown") if user else "Unknown"
+#         for payment in data:
+#             try:
+#                 # Get user information
+#                 user = await db.users.find_one({"id": payment.user_id}, {"_id": 0})
+#                 username = user.get("username", "Unknown") if user else "Unknown"
                 
-                # Format created_at to readable string
-                if hasattr(payment.created_at, 'strftime'):
-                    created_at_str = payment.created_at.strftime("%Y-%m-%d %H:%M:%S")
-                elif isinstance(payment.created_at, str):
-                    created_at_str = payment.created_at
-                else:
-                    created_at_str = str(payment.created_at)
+#                 # Format created_at to readable string
+#                 if hasattr(payment.created_at, 'strftime'):
+#                     created_at_str = payment.created_at.strftime("%Y-%m-%d %H:%M:%S")
+#                 elif isinstance(payment.created_at, str):
+#                     created_at_str = payment.created_at
+#                 else:
+#                     created_at_str = str(payment.created_at)
                 
-                # Create export record with only required fields
-                export_record = {
-                    "ID": payment.id or "",
-                    "Username": username,
-                    "Jumlah Pembayaran": payment.amount or 0,
-                    "Metode Pembayaran": payment.payment_method or "",
-                    "Status": payment.status or "",
-                    "Tanggal Pembayaran": created_at_str,
-                    "ID Pembayaran": payment.transaction_id or "",
-                    "URL Pembayaran": payment.payment_url or ""
-                }
-                export_data.append(export_record)
-            except Exception as e:
-                print(f"Error processing payment {payment.id}: {str(e)}")
-                # Add a basic record even if there's an error
-                export_record = {
-                    "ID": payment.id or "",
-                    "Username": "Error",
-                    "Jumlah Pembayaran": 0,
-                    "Metode Pembayaran": "",
-                    "Status": "Error",
-                    "Tanggal Pembayaran": "",
-                    "ID Pembayaran": "",
-                    "URL Pembayaran": ""
-                }
-                export_data.append(export_record)
+#                 # Create export record with only required fields
+#                 export_record = {
+#                     "ID": payment.id or "",
+#                     "Username": username,
+#                     "Jumlah Pembayaran": payment.amount or 0,
+#                     "Metode Pembayaran": payment.payment_method or "",
+#                     "Status": payment.status or "",
+#                     "Tanggal Pembayaran": created_at_str,
+#                     "ID Pembayaran": payment.transaction_id or "",
+#                     "URL Pembayaran": payment.payment_url or ""
+#                 }
+#                 export_data.append(export_record)
+#             except Exception as e:
+#                 print(f"Error processing payment {payment.id}: {str(e)}")
+#                 # Add a basic record even if there's an error
+#                 export_record = {
+#                     "ID": payment.id or "",
+#                     "Username": "Error",
+#                     "Jumlah Pembayaran": 0,
+#                     "Metode Pembayaran": "",
+#                     "Status": "Error",
+#                     "Tanggal Pembayaran": "",
+#                     "ID Pembayaran": "",
+#                     "URL Pembayaran": ""
+#                 }
+#                 export_data.append(export_record)
         
-        df = pd.DataFrame(export_data)
-        print(f"Export data count (no-auth): {len(export_data)}")
-        print(f"DataFrame shape (no-auth): {df.shape}")
-        if len(export_data) > 0:
-            print(f"Sample export data (no-auth): {export_data[0]}")
+#         df = pd.DataFrame(export_data)
+#         print(f"Export data count (no-auth): {len(export_data)}")
+#         print(f"DataFrame shape (no-auth): {df.shape}")
+#         if len(export_data) > 0:
+#             print(f"Sample export data (no-auth): {export_data[0]}")
         
-        if format == "excel":
-            buffer = io.BytesIO()
-            with pd.ExcelWriter(buffer, engine="xlsxwriter") as writer:
-                # First, write the DataFrame to create the worksheet
-                df.to_excel(writer, index=False, sheet_name="Payments", startrow=8)
+#         if format == "excel":
+#             buffer = io.BytesIO()
+#             with pd.ExcelWriter(buffer, engine="xlsxwriter") as writer:
+#                 # First, write the DataFrame to create the worksheet
+#                 df.to_excel(writer, index=False, sheet_name="Payments", startrow=8)
                 
-                # Now get the workbook and worksheet
-                workbook = writer.book
-                worksheet = writer.sheets["Payments"]
+#                 # Now get the workbook and worksheet
+#                 workbook = writer.book
+#                 worksheet = writer.sheets["Payments"]
                 
-                # Define formats
-                header_format = workbook.add_format({
-                    'bold': True,
-                    'font_size': 16,
-                    'align': 'center',
-                    'valign': 'vcenter',
-                    'bg_color': '#4CAF50',
-                    'font_color': 'white'
-                })
+#                 # Define formats
+#                 header_format = workbook.add_format({
+#                     'bold': True,
+#                     'font_size': 16,
+#                     'align': 'center',
+#                     'valign': 'vcenter',
+#                     'bg_color': '#4CAF50',
+#                     'font_color': 'white'
+#                 })
                 
-                subheader_format = workbook.add_format({
-                    'bold': True,
-                    'font_size': 12,
-                    'align': 'left',
-                    'valign': 'vcenter'
-                })
+#                 subheader_format = workbook.add_format({
+#                     'bold': True,
+#                     'font_size': 12,
+#                     'align': 'left',
+#                     'valign': 'vcenter'
+#                 })
                 
-                info_format = workbook.add_format({
-                    'font_size': 10,
-                    'align': 'left',
-                    'valign': 'vcenter'
-                })
+#                 info_format = workbook.add_format({
+#                     'font_size': 10,
+#                     'align': 'left',
+#                     'valign': 'vcenter'
+#                 })
                 
-                # Add header information
-                worksheet.merge_range('A1:H1', 'LAPORAN PEMBAYARAN IPL CANNART', header_format)
-                worksheet.merge_range('A2:H2', '', info_format)  # Empty row
+#                 # Add header information
+#                 worksheet.merge_range('A1:H1', 'LAPORAN PEMBAYARAN IPL CANNART', header_format)
+#                 worksheet.merge_range('A2:H2', '', info_format)  # Empty row
                 
-                # Add export information
-                current_time = datetime.now().strftime("%d %B %Y %H:%M:%S")
-                worksheet.merge_range('A3:H3', f'Periode: {start} s.d {end}', subheader_format)
-                worksheet.merge_range('A4:H4', f'Dibuat pada: {current_time}', info_format)
-                worksheet.merge_range('A5:H5', f'Dibuat oleh: System', info_format)
-                worksheet.merge_range('A6:H6', f'Total Data: {len(export_data)} transaksi', info_format)
-                worksheet.merge_range('A7:H7', '', info_format)  # Empty row
+#                 # Add export information
+#                 current_time = datetime.now().strftime("%d %B %Y %H:%M:%S")
+#                 worksheet.merge_range('A3:H3', f'Periode: {start} s.d {end}', subheader_format)
+#                 worksheet.merge_range('A4:H4', f'Dibuat pada: {current_time}', info_format)
+#                 worksheet.merge_range('A5:H5', f'Dibuat oleh: System', info_format)
+#                 worksheet.merge_range('A6:H6', f'Total Data: {len(export_data)} transaksi', info_format)
+#                 worksheet.merge_range('A7:H7', '', info_format)  # Empty row
                 
-                # Adjust column widths
-                worksheet.set_column('A:A', 15)  # ID
-                worksheet.set_column('B:B', 15)  # Username
-                worksheet.set_column('C:C', 18)  # Jumlah Pembayaran
-                worksheet.set_column('D:D', 18)  # Metode Pembayaran
-                worksheet.set_column('E:E', 12)  # Status
-                worksheet.set_column('F:F', 20)  # Tanggal Pembayaran
-                worksheet.set_column('G:G', 25)  # ID Pembayaran
-                worksheet.set_column('H:H', 50)  # URL Pembayaran
+#                 # Adjust column widths
+#                 worksheet.set_column('A:A', 15)  # ID
+#                 worksheet.set_column('B:B', 15)  # Username
+#                 worksheet.set_column('C:C', 18)  # Jumlah Pembayaran
+#                 worksheet.set_column('D:D', 18)  # Metode Pembayaran
+#                 worksheet.set_column('E:E', 12)  # Status
+#                 worksheet.set_column('F:F', 20)  # Tanggal Pembayaran
+#                 worksheet.set_column('G:G', 25)  # ID Pembayaran
+#                 worksheet.set_column('H:H', 50)  # URL Pembayaran
                 
-                # Add table styling for data area (starting from row 8, which is row 9 in Excel)
-                if len(export_data) > 0:
-                    # Create table with proper styling
-                    table_data = [list(df.columns)] + [list(row) for row in df.values]
-                    worksheet.add_table(8, 0, 8 + len(export_data), len(df.columns) - 1, {
-                        'columns': [{'header': col} for col in df.columns],
-                        'style': 'Table Style Medium 9',
-                        'first_column': False,
-                        'banded_rows': True
-                    })
+#                 # Add table styling for data area (starting from row 8, which is row 9 in Excel)
+#                 if len(export_data) > 0:
+#                     # Create table with proper styling
+#                     table_data = [list(df.columns)] + [list(row) for row in df.values]
+#                     worksheet.add_table(8, 0, 8 + len(export_data), len(df.columns) - 1, {
+#                         'columns': [{'header': col} for col in df.columns],
+#                         'style': 'Table Style Medium 9',
+#                         'first_column': False,
+#                         'banded_rows': True
+#                     })
                 
-            buffer.seek(0)
-            return StreamingResponse(
-                buffer,
-                media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                headers={
-                    "Content-Disposition": f'attachment; filename="Laporan_Pembayaran_IPL_Cannart_{start}_{end}.xlsx"',
-                    "Access-Control-Allow-Origin": "*",
-                    "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-                    "Access-Control-Allow-Headers": "Content-Type, Authorization",
-                },
-            )
-        else:
-            return {"message": "PDF export not implemented for no-auth endpoint", "data": export_data}
+#             buffer.seek(0)
+#             return StreamingResponse(
+#                 buffer,
+#                 media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+#                 headers={
+#                     "Content-Disposition": f'attachment; filename="Laporan_Pembayaran_IPL_Cannart_{start}_{end}.xlsx"',
+#                     "Access-Control-Allow-Origin": "*",
+#                     "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+#                     "Access-Control-Allow-Headers": "Content-Type, Authorization",
+#                 },
+#             )
+#         else:
+#             return {"message": "PDF export not implemented for no-auth endpoint", "data": export_data}
             
-    except Exception as e:
-        print(f"Error in export_payments_no_auth: {str(e)}")
-        return {"error": str(e), "message": "Export failed"}
+#     except Exception as e:
+#         print(f"Error in export_payments_no_auth: {str(e)}")
+#         return {"error": str(e), "message": "Export failed"}
