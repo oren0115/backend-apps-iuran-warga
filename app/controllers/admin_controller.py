@@ -101,25 +101,48 @@ class AdminController:
         pending_fees = await db.fees.count_documents({"status": "Pending"})
         unpaid_fees = await db.fees.count_documents({"status": "Belum Bayar"})
         
-        # Count payments by status
+        # Count payments by status - using correct status values
         pending_payments = await db.payments.count_documents({"status": "Pending"})
-        approved_payments = await db.payments.count_documents({"status": "Approved"})
+        approved_payments = await db.payments.count_documents({
+            "$or": [{"status": "Settlement"}, {"status": "Success"}]
+        })
         
-        # Calculate total revenue
-        pipeline = [
-            {"$match": {"status": "Approved"}},
-            {"$group": {"_id": None, "total": {"$sum": "$amount"}}}
-        ]
-        revenue_result = await db.payments.aggregate(pipeline).to_list(1)
-        total_revenue = revenue_result[0]["total"] if revenue_result else 0
+        # Calculate current month collection
+        jakarta_tz = timezone(timedelta(hours=7))
+        current_time = datetime.now(jakarta_tz)
+        current_month = current_time.strftime("%Y-%m")
+        
+        # Get current month fees
+        current_month_fees = await db.fees.find({"bulan": current_month}).to_list(None)
+        current_month_collection = sum(fee.get("nominal", 0) for fee in current_month_fees if fee.get("status") == "Lunas")
+        
+        # Calculate collection rate
+        total_expected = sum(fee.get("nominal", 0) for fee in current_month_fees)
+        collection_rate = round((current_month_collection / total_expected * 100) if total_expected > 0 else 0, 1)
+        
+        # Calculate monthly fees for chart (last 6 months)
+        monthly_fees = []
+        for i in range(6):
+            month_date = current_time - timedelta(days=30 * i)
+            month_str = month_date.strftime("%Y-%m")
+            month_name = month_date.strftime("%b")
+            
+            month_fees = await db.fees.find({"bulan": month_str}).to_list(None)
+            month_total = sum(fee.get("nominal", 0) for fee in month_fees if fee.get("status") == "Lunas")
+            
+            monthly_fees.append({
+                "month": month_name,
+                "total": month_total
+            })
+        
+        monthly_fees.reverse()  # Show oldest to newest
         
         return {
-            "total_users": total_users,
-            "total_fees": total_fees,
-            "paid_fees": paid_fees,
-            "pending_fees": pending_fees,
-            "unpaid_fees": unpaid_fees,
-            "pending_payments": pending_payments,
-            "approved_payments": approved_payments,
-            "total_revenue": total_revenue
+            "totalUsers": total_users,
+            "totalFees": total_fees,
+            "pendingPayments": pending_payments,
+            "approvedPayments": approved_payments,
+            "currentMonthCollection": current_month_collection,
+            "collectionRate": collection_rate,
+            "monthlyFees": monthly_fees
         }
