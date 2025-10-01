@@ -2,7 +2,7 @@ from app.config.midtrans import midtrans_config
 from app.models.schemas import MidtransPaymentRequest, PaymentCreateResponse, MidtransNotificationRequest
 from app.config.database import get_database
 from fastapi import HTTPException, status
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import hashlib
 import hmac
 import logging
@@ -47,7 +47,9 @@ class MidtransService:
         
         # Create transaction details
         # Generate shorter order_id (max 50 chars for Midtrans)
-        timestamp = int(datetime.utcnow().timestamp())
+        # Use Jakarta timezone for consistent timestamp
+        jakarta_tz = timezone(timedelta(hours=7))
+        timestamp = int(datetime.now(jakarta_tz).timestamp())
         order_id = f"RT{timestamp}{payment_request.fee_id[-8:]}"  # Use last 8 chars of fee_id
         transaction_details = {
             "order_id": order_id,
@@ -132,7 +134,8 @@ class MidtransService:
             # Generate transaction_id if not provided by Midtrans (Snap API doesn't return it)
             transaction_id = response.get("transaction_id") or f"txn_{timestamp}_{payment_request.fee_id[-8:]}"
             
-            # Save payment to database
+            # Save payment to database with Jakarta timezone
+            current_time = datetime.now(jakarta_tz)
             payment_data = {
                 "id": f"pay_{timestamp}",
                 "fee_id": payment_request.fee_id,
@@ -141,7 +144,7 @@ class MidtransService:
                 "amount": fee["nominal"],
                 "payment_method": payment_request.payment_method,
                 "status": "Pending",
-                "created_at": datetime.utcnow(),
+                "created_at": current_time,
                 "transaction_id": transaction_id,
                 "payment_token": response.get("token"),
                 "payment_url": response.get("redirect_url"),
@@ -149,7 +152,7 @@ class MidtransService:
                 "payment_type": payment_request.payment_method,
                 "bank": None,  # Will be updated via webhook
                 "va_number": None,  # Will be updated via webhook
-                "expiry_time": datetime.utcnow() + timedelta(hours=24)  # Default 24 hours
+                "expiry_time": current_time + timedelta(hours=24)  # Default 24 hours in Jakarta timezone
             }
             
             await db.payments.insert_one(payment_data)
@@ -230,9 +233,11 @@ class MidtransService:
         }
         
         if new_status == "Success":
+            # Use Jakarta timezone for settled_at
+            jakarta_tz = timezone(timedelta(hours=7))
             update_data.update({
                 "status": "Success",
-                "settled_at": datetime.utcnow()
+                "settled_at": datetime.now(jakarta_tz)
             })
             
             logger.info(f"Updating payment to Success status for payment: {payment['id']}")

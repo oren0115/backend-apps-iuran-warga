@@ -1,7 +1,7 @@
 from app.models.schemas import UserResponse
 from app.utils.auth import AuthManager
 from app.config.database import get_database
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import uuid
 
 class AdminController:
@@ -62,7 +62,10 @@ class AdminController:
         await db.users.insert_many(sample_users)
         
         # Generate sample fees for current month (berdasarkan tipe rumah)
-        current_month = datetime.utcnow().strftime("%Y-%m")
+        # Use Jakarta timezone for current month
+        jakarta_tz = timezone(timedelta(hours=7))
+        current_time = datetime.now(jakarta_tz)
+        current_month = current_time.strftime("%Y-%m")
         sample_tarif = {"60M2": 100000, "72M2": 120000, "HOOK": 150000}
         sample_fees = []
         for user in sample_users:
@@ -77,8 +80,8 @@ class AdminController:
                         "nominal": nominal,
                         "bulan": current_month,
                         "status": "Belum Bayar",
-                        "due_date": datetime.utcnow() + timedelta(days=30),
-                        "created_at": datetime.utcnow()
+                        "due_date": current_time + timedelta(days=30),
+                        "created_at": current_time
                     })
         if sample_fees:
             await db.fees.insert_many(sample_fees)

@@ -1,6 +1,6 @@
 from app.models.schemas import Fee, FeeResponse
 from app.config.database import get_database
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import uuid
 
 class FeeController:
@@ -17,6 +17,10 @@ class FeeController:
         tarif_config keys: 60M2, 72M2, HOOK (case-insensitive supported)
         """
         db = get_database()
+        
+        # Use Jakarta timezone for all timestamps
+        jakarta_tz = timezone(timedelta(hours=7))
+        current_time = datetime.now(jakarta_tz)
         
         # Get all non-admin users
         users = await db.users.find({"is_admin": False}).to_list(1000)
@@ -58,8 +62,8 @@ class FeeController:
                     "nominal": nominal,
                     "bulan": bulan,
                     "status": "Belum Bayar",
-                    "due_date": datetime.utcnow() + timedelta(days=30),
-                    "created_at": datetime.utcnow()
+                    "due_date": current_time + timedelta(days=30),
+                    "created_at": current_time
                 }
                 await db.fees.insert_one(fee_dict)
                 fees_created += 1
@@ -98,6 +102,10 @@ class FeeController:
         """Regenerate fees for a specific month based on current user house types (admin only)"""
         db = get_database()
         
+        # Use Jakarta timezone for all timestamps
+        jakarta_tz = timezone(timedelta(hours=7))
+        current_time = datetime.now(jakarta_tz)
+        
         # Delete existing fees for the month
         await db.fees.delete_many({"bulan": bulan})
         
@@ -135,8 +143,8 @@ class FeeController:
                 "nominal": nominal,
                 "bulan": bulan,
                 "status": "Belum Bayar",
-                "due_date": datetime.utcnow() + timedelta(days=30),
-                "created_at": datetime.utcnow()
+                "due_date": current_time + timedelta(days=30),
+                "created_at": current_time
             }
             await db.fees.insert_one(fee_dict)
             fees_created += 1

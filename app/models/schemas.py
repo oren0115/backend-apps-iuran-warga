@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field, validator
 from typing import List, Optional, Union
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 import uuid
 
 # -------------------------
@@ -39,7 +39,7 @@ class User(UserBase):
     id: Optional[str] = Field(default_factory=lambda: str(uuid.uuid4()))
     password: str
     is_admin: bool = False
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone(timedelta(hours=7))))
 
 class UserResponse(UserBase):
     id: str
@@ -64,7 +64,7 @@ class Fee(FeeBase):
     user_id: str
     status: str = "Belum Bayar"
     due_date: datetime
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone(timedelta(hours=7))))
 
 class FeeResponse(FeeBase):
     id: str
@@ -89,7 +89,7 @@ class Payment(PaymentBase):
     user_id: str
     order_id: Optional[str] = None
     status: str = "Pending"
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone(timedelta(hours=7))))
 
     # Midtrans fields
     transaction_id: Optional[str] = None
@@ -152,7 +152,7 @@ class Notification(NotificationBase):
     id: Optional[str] = Field(default_factory=lambda: str(uuid.uuid4()))
     user_id: str
     is_read: bool = False
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone(timedelta(hours=7))))
 
 class NotificationResponse(NotificationBase):
     id: str

@@ -3,7 +3,7 @@ from app.models.schemas import User, UserCreate, UserLogin, UserResponse, LoginR
 from app.utils.auth import AuthManager
 from app.config.database import get_database
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 
 class UserController:
     def __init__(self):
@@ -26,7 +26,9 @@ class UserController:
         user_dict["password"] = self.auth_manager.hash_password(user_dict["password"])
         user_dict["id"] = str(uuid.uuid4())
         user_dict["is_admin"] = False
-        user_dict["created_at"] = datetime.utcnow()
+        # Use Jakarta timezone for created_at
+        jakarta_tz = timezone(timedelta(hours=7))
+        user_dict["created_at"] = datetime.now(jakarta_tz)
         
         
         await db.users.insert_one(user_dict)

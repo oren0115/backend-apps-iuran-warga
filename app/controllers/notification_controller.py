@@ -1,7 +1,7 @@
 from app.models.schemas import Notification, NotificationResponse
 from app.config.database import get_database
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 
 class NotificationController:
     async def get_user_notifications(self, user_id: str) -> list[NotificationResponse]:
@@ -19,6 +19,8 @@ class NotificationController:
         """Create a new notification"""
         db = get_database()
         
+        # Use Jakarta timezone for created_at
+        jakarta_tz = timezone(timedelta(hours=7))
         notification_dict = {
             "id": str(uuid.uuid4()),
             "user_id": user_id,
@@ -26,7 +28,7 @@ class NotificationController:
             "message": message,
             "type": notification_type,
             "is_read": False,
-            "created_at": datetime.utcnow()
+            "created_at": datetime.now(jakarta_tz)
         }
         
         await db.notifications.insert_one(notification_dict)
@@ -36,6 +38,10 @@ class NotificationController:
     async def create_bulk_notifications(self, title: str, message: str, notification_type: str = "pengumuman") -> dict:
         """Create notifications for all users (admin only)"""
         db = get_database()
+        
+        # Use Jakarta timezone for created_at
+        jakarta_tz = timezone(timedelta(hours=7))
+        current_time = datetime.now(jakarta_tz)
         
         # Get all users
         users = await db.users.find({}, {"_id": 0}).to_list(1000)
@@ -49,7 +55,7 @@ class NotificationController:
                 "message": message,
                 "type": notification_type,
                 "is_read": False,
-                "created_at": datetime.utcnow()
+                "created_at": current_time
             })
         
         if notifications:
