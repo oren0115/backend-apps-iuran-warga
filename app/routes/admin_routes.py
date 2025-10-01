@@ -248,6 +248,10 @@ async def export_payments(
                 export_data.append(export_record)
         
         df = pd.DataFrame(export_data)
+        print(f"Export data count: {len(export_data)}")
+        print(f"DataFrame shape: {df.shape}")
+        if len(export_data) > 0:
+            print(f"Sample export data: {export_data[0]}")
     except Exception as e:
         print(f"Error in export_payments: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Export failed: {str(e)}")
@@ -307,17 +311,16 @@ async def export_payments(
             worksheet.set_column('G:G', 25)  # ID Pembayaran
             worksheet.set_column('H:H', 50)  # URL Pembayaran
             
-            # Add border to data area
-            data_format = workbook.add_format({
-                'border': 1,
-                'align': 'left',
-                'valign': 'vcenter'
-            })
-            
-            # Apply border to data rows (starting from row 9 since data starts at row 9)
-            for row in range(9, 9 + len(export_data) + 1):
-                for col in range(8):
-                    worksheet.write(row, col, '', data_format)
+            # Add table styling for data area (starting from row 8, which is row 9 in Excel)
+            if len(export_data) > 0:
+                # Create table with proper styling
+                table_data = [list(df.columns)] + [list(row) for row in df.values]
+                worksheet.add_table(8, 0, 8 + len(export_data), len(df.columns) - 1, {
+                    'columns': [{'header': col} for col in df.columns],
+                    'style': 'Table Style Medium 9',
+                    'first_column': False,
+                    'banded_rows': True
+                })
             
         buffer.seek(0)
         return StreamingResponse(
@@ -620,6 +623,10 @@ async def export_payments_no_auth(
                 export_data.append(export_record)
         
         df = pd.DataFrame(export_data)
+        print(f"Export data count (no-auth): {len(export_data)}")
+        print(f"DataFrame shape (no-auth): {df.shape}")
+        if len(export_data) > 0:
+            print(f"Sample export data (no-auth): {export_data[0]}")
         
         if format == "excel":
             buffer = io.BytesIO()
@@ -676,17 +683,16 @@ async def export_payments_no_auth(
                 worksheet.set_column('G:G', 25)  # ID Pembayaran
                 worksheet.set_column('H:H', 50)  # URL Pembayaran
                 
-                # Add border to data area
-                data_format = workbook.add_format({
-                    'border': 1,
-                    'align': 'left',
-                    'valign': 'vcenter'
-                })
-                
-                # Apply border to data rows (starting from row 9 since data starts at row 9)
-                for row in range(9, 9 + len(export_data) + 1):
-                    for col in range(8):
-                        worksheet.write(row, col, '', data_format)
+                # Add table styling for data area (starting from row 8, which is row 9 in Excel)
+                if len(export_data) > 0:
+                    # Create table with proper styling
+                    table_data = [list(df.columns)] + [list(row) for row in df.values]
+                    worksheet.add_table(8, 0, 8 + len(export_data), len(df.columns) - 1, {
+                        'columns': [{'header': col} for col in df.columns],
+                        'style': 'Table Style Medium 9',
+                        'first_column': False,
+                        'banded_rows': True
+                    })
                 
             buffer.seek(0)
             return StreamingResponse(
