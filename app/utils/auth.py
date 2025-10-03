@@ -12,8 +12,18 @@ load_dotenv()
 
 # Security
 security = HTTPBearer()
-JWT_SECRET = os.getenv("JWT_SECRET", "")
+
+# JWT Configuration with validation
+JWT_SECRET = os.getenv("JWT_SECRET")
 JWT_ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
+JWT_ACCESS_TOKEN_EXPIRE_HOURS = int(os.getenv("JWT_ACCESS_TOKEN_EXPIRE_HOURS", "24"))
+
+# Validate JWT configuration
+if not JWT_SECRET:
+    raise ValueError("JWT_SECRET environment variable is required but not set")
+
+if len(JWT_SECRET) < 32:
+    raise ValueError("JWT_SECRET must be at least 32 characters long for security")
 
 class AuthManager:
     @staticmethod
@@ -29,12 +39,18 @@ class AuthManager:
     @staticmethod
     def create_access_token(data: dict) -> str:
         """Create a JWT access token"""
-        to_encode = data.copy()
-        # Use Jakarta timezone for token expiration
-        jakarta_tz = timezone(timedelta(hours=7))
-        expire = datetime.now(jakarta_tz) + timedelta(hours=24)
-        to_encode.update({"exp": expire})
-        return jwt.encode(to_encode, JWT_SECRET, algorithm=JWT_ALGORITHM)
+        try:
+            to_encode = data.copy()
+            # Use Jakarta timezone for token expiration
+            jakarta_tz = timezone(timedelta(hours=7))
+            expire = datetime.now(jakarta_tz) + timedelta(hours=JWT_ACCESS_TOKEN_EXPIRE_HOURS)
+            to_encode.update({"exp": expire})
+            return jwt.encode(to_encode, JWT_SECRET, algorithm=JWT_ALGORITHM)
+        except Exception as e:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to create access token: {str(e)}"
+            )
 
     @staticmethod
     async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
@@ -57,10 +73,20 @@ class AuthManager:
                 )
             
             return user
-        except jwt.PyJWTError:
+        except jwt.ExpiredSignatureError:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Token has expired"
+            )
+        except jwt.InvalidTokenError:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid token"
+            )
+        except Exception as e:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Authentication error: {str(e)}"
             )
 
     @staticmethod
@@ -100,7 +126,10 @@ async def get_current_user_websocket(websocket: WebSocket, token: str = None):
             return None
         
         return user
-    except jwt.PyJWTError:
+    except jwt.ExpiredSignatureError:
+        await websocket.close(code=1008, reason="Token has expired")
+        return None
+    except jwt.InvalidTokenError:
         await websocket.close(code=1008, reason="Invalid token")
         return None
     except Exception as e:
