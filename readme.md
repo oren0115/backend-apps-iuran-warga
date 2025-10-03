@@ -250,6 +250,50 @@ backend/
 }
 ```
 
+## 🔒 Security Testing
+
+**PENTING**: Sebelum deploy ke production, jalankan security testing untuk memastikan aplikasi aman!
+
+### Quick Security Check
+
+```bash
+# Quick security assessment
+python testing/demo_security_test.py http://localhost:8000
+
+# Comprehensive security testing
+python testing/run_security_tests.py http://localhost:8000
+
+# Check dependencies vulnerabilities
+python testing/check_dependencies.py
+```
+
+### Security Test Coverage
+
+✅ **HTTPS Configuration & SSL/TLS**
+✅ **Security Headers** (XSS, Clickjacking Protection)
+✅ **Rate Limiting** (Brute Force Prevention)
+✅ **Webhook Security** (Midtrans Signature Verification)
+✅ **CORS Configuration**
+✅ **Dependency Vulnerabilities**
+
+### Dokumentasi Lengkap
+
+- **`testing/README.md`** - Panduan lengkap security testing
+- **`testing/IMPLEMENTATION_GUIDE.md`** - Cara fix security issues
+- **`SECURITY_TESTING.md`** - Security best practices (coming soon)
+
+### Production Readiness Checklist
+
+Sebelum deploy ke production:
+
+- [ ] ✅ Semua security tests PASSED
+- [ ] ✅ HTTPS enabled dengan valid SSL certificate
+- [ ] ✅ Rate limiting configured
+- [ ] ✅ Webhook signature verification implemented
+- [ ] ✅ Security headers configured
+- [ ] ✅ Environment variables properly set
+- [ ] ✅ No known dependency vulnerabilities
+
 ## 🚀 Deployment
 
 ### Development
@@ -260,7 +304,15 @@ python main.py
 
 ### Production
 
+**⚠️ SEBELUM DEPLOY**: Jalankan security testing!
+
 ```bash
+# 1. Run security tests
+python testing/run_security_tests.py https://your-staging-url.com
+
+# 2. Fix critical issues (lihat testing/IMPLEMENTATION_GUIDE.md)
+
+# 3. Deploy
 uvicorn main:app --host 0.0.0.0 --port 8000
 ```
 

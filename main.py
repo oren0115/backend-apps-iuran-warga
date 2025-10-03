@@ -1,11 +1,26 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, Response
 from starlette.middleware.cors import CORSMiddleware
+from starlette.middleware.trustedhost import TrustedHostMiddleware
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 from app.config.database import init_database, close_database
 from app.routes import user_routes, fee_routes, payment_routes, notification_routes, admin_routes, websocket_routes
 import logging
 
 # Create the main app
 app = FastAPI(title="RT/RW Fee Management API")
+
+# Initialize rate limiter
+limiter = Limiter(key_func=get_remote_address)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+# Add security middleware
+app.add_middleware(
+    TrustedHostMiddleware, 
+    allowed_hosts=["localhost", "127.0.0.1", "*.vercel.app"]
+)
 
 # Add CORS middleware
 # NOTE: When allow_credentials=True, you cannot use wildcard "*" for allow_origins.
@@ -16,13 +31,10 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:5173",
         "http://127.0.0.1:5173",
-        "https://iuran-warga-phi.vercel.app",
-        "http://localhost:60132",
-        "http://localhost:8080",  # Flutter web
-        "http://10.0.2.2:8000",  # Android emulator localhost
+        "https://iuran-warga-phi.vercel.app",  # Android emulator localhost
     ],
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization", "X-Requested-With"],
 )
 
 # Include routers
@@ -32,6 +44,20 @@ app.include_router(payment_routes.router, prefix="/api", tags=["payments"])
 app.include_router(notification_routes.router, prefix="/api", tags=["notifications"])
 app.include_router(admin_routes.router, prefix="/api/admin", tags=["admin"])
 app.include_router(websocket_routes.router, prefix="/api", tags=["websocket"])
+
+# Add security headers middleware
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    response = await call_next(request)
+    
+    # Security headers
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
+    
+    return response
 
 # Configure logging
 logging.basicConfig(

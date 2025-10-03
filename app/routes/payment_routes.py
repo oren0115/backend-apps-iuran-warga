@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Request, HTTPException, status
 from typing import List
 from app.models import (
     PaymentCreate,
@@ -8,6 +8,7 @@ from app.models import (
 )
 from app.controllers.payment_controller import PaymentController
 from app.utils.auth import get_current_user
+from app.utils.webhook_security import validate_webhook_request
 
 router = APIRouter()
 payment_controller = PaymentController()
@@ -33,6 +34,17 @@ async def get_user_payments(current_user=Depends(get_current_user)):
 async def handle_midtrans_notification(request: Request):
     """Handle payment notification from Midtrans (webhook)"""
     try:
+        # Get raw body for signature verification
+        body = await request.body()
+        body_str = body.decode('utf-8')
+        
+        # Get signature from headers
+        signature = request.headers.get("X-Midtrans-Signature") or request.headers.get("X-Signature")
+        
+        # Validate webhook signature
+        validate_webhook_request(body_str, signature)
+        
+        # Parse JSON data
         notification_data = await request.json()
 
         # Normalisasi VA info jika dikirim dalam va_numbers
@@ -50,12 +62,14 @@ async def handle_midtrans_notification(request: Request):
         # Teruskan ke controller sebagai model Pydantic
         return await payment_controller.handle_midtrans_notification(notification)
 
+    except HTTPException:
+        raise
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
 
 @router.get("/payments/status/{transaction_id}")
-async def check_payment_status(transaction_id: str):
+async def check_payment_status(transaction_id: str, current_user=Depends(get_current_user)):
     """Check payment status from Midtrans"""
     return await payment_controller.check_payment_status(transaction_id)
 
