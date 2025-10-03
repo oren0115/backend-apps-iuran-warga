@@ -59,34 +59,34 @@ class AdminController:
         await db.notifications.delete_many({})
         
         # Insert sample users
-        await db.users.insert_many(sample_users)
+        # await db.users.insert_many(sample_users)
         
         # Generate sample fees for current month (berdasarkan tipe rumah)
         # Use Jakarta timezone for current month
-        jakarta_tz = timezone(timedelta(hours=7))
-        current_time = datetime.now(jakarta_tz)
-        current_month = current_time.strftime("%Y-%m")
-        sample_tarif = {"60M2": 100000, "72M2": 120000, "HOOK": 150000}
-        sample_fees = []
-        for user in sample_users:
-            if not user["is_admin"]:
-                tipe = (user.get("tipe_rumah") or "").upper()
-                nominal = sample_tarif.get(tipe)
-                if nominal:
-                    sample_fees.append({
-                        "id": str(uuid.uuid4()),
-                        "user_id": user["id"],
-                        "kategori": tipe or "UNKNOWN",
-                        "nominal": nominal,
-                        "bulan": current_month,
-                        "status": "Belum Bayar",
-                        "due_date": current_time + timedelta(days=30),
-                        "created_at": current_time
-                    })
-        if sample_fees:
-            await db.fees.insert_many(sample_fees)
+        # jakarta_tz = timezone(timedelta(hours=7))
+        # current_time = datetime.now(jakarta_tz)
+        # current_month = current_time.strftime("%Y-%m")
+        # sample_tarif = {"60M2": 100000, "72M2": 120000, "HOOK": 150000}
+        # sample_fees = []
+        # for user in sample_users:
+        #     if not user["is_admin"]:
+        #         tipe = (user.get("tipe_rumah") or "").upper()
+        #         nominal = sample_tarif.get(tipe)
+        #         if nominal:
+        #             sample_fees.append({
+        #                 "id": str(uuid.uuid4()),
+        #                 "user_id": user["id"],
+        #                 "kategori": tipe or "UNKNOWN",
+        #                 "nominal": nominal,
+        #                 "bulan": current_month,
+        #                 "status": "Belum Bayar",
+        #                 "due_date": current_time + timedelta(days=30),
+        #                 "created_at": current_time
+        #             })
+        # if sample_fees:
+        #     await db.fees.insert_many(sample_fees)
         
-        return {"message": "Data sampel berhasil dibuat"}
+        # return {"message": "Data sampel berhasil dibuat"}
 
     async def get_dashboard_stats(self) -> dict:
         """Get dashboard statistics (admin only)"""
