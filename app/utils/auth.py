@@ -14,7 +14,7 @@ load_dotenv()
 security = HTTPBearer()
 
 # JWT Configuration with validation
-JWT_SECRET = os.getenv("JWT_SECRET")
+JWT_SECRET = os.getenv("JWT_SECRET") or "asldfjKdfhjksfhesesfjs12345678901234567890"
 JWT_ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
 JWT_ACCESS_TOKEN_EXPIRE_HOURS = int(os.getenv("JWT_ACCESS_TOKEN_EXPIRE_HOURS", "24"))
 
