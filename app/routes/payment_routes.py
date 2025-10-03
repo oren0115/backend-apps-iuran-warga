@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, Request
 from typing import List
-from app.models.schemas import (
+from app.models import (
     PaymentCreate,
     PaymentResponse,
     PaymentCreateResponse,

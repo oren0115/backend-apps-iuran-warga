@@ -1,5 +1,5 @@
 from fastapi import HTTPException, status
-from app.models.schemas import (
+from app.models import (
     Payment, PaymentCreate, PaymentResponse, PaymentWithDetails,
     UserResponse, FeeResponse, PaymentCreateResponse, MidtransPaymentRequest,
     MidtransNotificationRequest,

@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends
-from app.models.schemas import FeeResponse
+from app.models import FeeResponse
 from app.controllers.fee_controller import FeeController
 from app.utils.auth import get_current_user
 from typing import List

@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends
-from app.models.schemas import UserCreate, UserLogin, UserResponse, LoginResponse, MessageResponse, UserUpdate
+from app.models import UserCreate, UserLogin, UserResponse, LoginResponse, MessageResponse, UserUpdate
 from app.controllers.user_controller import UserController
 from app.utils.auth import get_current_user, get_current_admin
 

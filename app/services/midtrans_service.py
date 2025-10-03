@@ -1,5 +1,5 @@
 from app.config.midtrans import midtrans_config
-from app.models.schemas import MidtransPaymentRequest, PaymentCreateResponse, MidtransNotificationRequest
+from app.models import MidtransPaymentRequest, PaymentCreateResponse, MidtransNotificationRequest
 from app.config.database import get_database
 from fastapi import HTTPException, status
 from datetime import datetime, timedelta, timezone

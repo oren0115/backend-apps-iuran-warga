@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, Query, HTTPException
 from fastapi.responses import Response
 from fastapi.responses import StreamingResponse
-from app.models.schemas import (
+from app.models import (
     UserResponse, FeeResponse, PaymentResponse, MessageResponse, 
     GenerateFeesRequest, NotificationResponse, UserUpdate, PasswordUpdate, UserCreate, ResetPasswordRequest
 )

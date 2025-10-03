@@ -1,4 +1,4 @@
-from app.models.schemas import Fee, FeeResponse
+from app.models import Fee, FeeResponse
 from app.config.database import get_database
 from datetime import datetime, timedelta, timezone
 import uuid

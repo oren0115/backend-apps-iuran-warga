@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends
-from app.models.schemas import NotificationResponse, MessageResponse
+from app.models import NotificationResponse, MessageResponse
 from app.controllers.notification_controller import NotificationController
 from app.utils.auth import get_current_user
 from typing import List

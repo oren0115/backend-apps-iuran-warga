@@ -1,4 +1,4 @@
-from app.models.schemas import Notification, NotificationResponse
+from app.models import Notification, NotificationResponse
 from app.config.database import get_database
 import uuid
 from datetime import datetime, timezone, timedelta
