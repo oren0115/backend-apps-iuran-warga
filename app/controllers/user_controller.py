@@ -25,7 +25,9 @@ class UserController:
         user_dict = user_data.dict()
         user_dict["password"] = self.auth_manager.hash_password(user_dict["password"])
         user_dict["id"] = str(uuid.uuid4())
-        user_dict["is_admin"] = False
+        # Use is_admin from user_data if provided, otherwise default to False
+        if "is_admin" not in user_dict or user_dict["is_admin"] is None:
+            user_dict["is_admin"] = False
         # Use Jakarta timezone for created_at
         jakarta_tz = timezone(timedelta(hours=7))
         user_dict["created_at"] = datetime.now(jakarta_tz)

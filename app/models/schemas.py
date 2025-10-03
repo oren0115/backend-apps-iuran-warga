@@ -17,6 +17,7 @@ class UserBase(BaseModel):
 
 class UserCreate(UserBase):
     password: str
+    is_admin: Optional[bool] = False
 
 class UserUpdate(BaseModel):
     nama: Optional[str] = None
@@ -24,6 +25,7 @@ class UserUpdate(BaseModel):
     nomor_rumah: Optional[str] = None
     nomor_hp: Optional[str] = None
     tipe_rumah: Optional[str] = None
+    is_admin: Optional[bool] = None
 
 class PasswordUpdate(BaseModel):
     new_password: str
