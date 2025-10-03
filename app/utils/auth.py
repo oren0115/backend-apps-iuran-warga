@@ -1,14 +1,19 @@
-from fastapi import HTTPException, Depends, status
+from fastapi import HTTPException, Depends, status, WebSocket
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from datetime import datetime, timedelta, timezone
 import hashlib
 import jwt
+import os
+from dotenv import load_dotenv
 from app.config.database import get_database
+
+# Load environment variables
+load_dotenv()
 
 # Security
 security = HTTPBearer()
-JWT_SECRET = ""
-JWT_ALGORITHM = "HS256"
+JWT_SECRET = os.getenv("JWT_SECRET", "")
+JWT_ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
 
 class AuthManager:
     @staticmethod
@@ -74,3 +79,30 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
 
 async def get_current_admin(current_user = Depends(get_current_user)):
     return await AuthManager.get_current_admin(current_user)
+
+async def get_current_user_websocket(websocket: WebSocket, token: str = None):
+    """Get current user from WebSocket token"""
+    try:
+        if not token:
+            await websocket.close(code=1008, reason="No token provided")
+            return None
+            
+        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        username: str = payload.get("sub")
+        if username is None:
+            await websocket.close(code=1008, reason="Invalid token")
+            return None
+        
+        db = get_database()
+        user = await db.users.find_one({"username": username})
+        if user is None:
+            await websocket.close(code=1008, reason="User not found")
+            return None
+        
+        return user
+    except jwt.PyJWTError:
+        await websocket.close(code=1008, reason="Invalid token")
+        return None
+    except Exception as e:
+        await websocket.close(code=1011, reason="Internal error")
+        return None

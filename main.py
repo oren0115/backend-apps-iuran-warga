@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from starlette.middleware.cors import CORSMiddleware
 from app.config.database import init_database, close_database
-from app.routes import user_routes, fee_routes, payment_routes, notification_routes, admin_routes
+from app.routes import user_routes, fee_routes, payment_routes, notification_routes, admin_routes, websocket_routes
 import logging
 
 # Create the main app
@@ -31,6 +31,7 @@ app.include_router(fee_routes.router, prefix="/api", tags=["fees"])
 app.include_router(payment_routes.router, prefix="/api", tags=["payments"])
 app.include_router(notification_routes.router, prefix="/api", tags=["notifications"])
 app.include_router(admin_routes.router, prefix="/api/admin", tags=["admin"])
+app.include_router(websocket_routes.router, prefix="/api", tags=["websocket"])
 
 # Configure logging
 logging.basicConfig(

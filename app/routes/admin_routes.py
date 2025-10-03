@@ -194,13 +194,10 @@ async def export_payments(
     current_user = Depends(get_current_admin),
 ):
     try:
-        print(f"Export request: start={start}, end={end}, format={format}")
         start_dt = datetime.combine(start, datetime.min.time())
         end_dt = datetime.combine(end, datetime.max.time())
-        print(f"Date range: {start_dt} to {end_dt}")
         
         data = await payment_controller.get_payments_by_date_range(start_dt, end_dt)
-        print(f"Found {len(data)} payments")
         
         # Get user data for each payment
         db = get_database()
@@ -232,8 +229,7 @@ async def export_payments(
                     # "URL Pembayaran": payment.payment_url or ""
                 }
                 export_data.append(export_record)
-            except Exception as e:
-                print(f"Error processing payment {payment.id}: {str(e)}")
+            except Exception:
                 # Add a basic record even if there's an error
                 export_record = {
                     "ID": payment.id or "",
@@ -248,12 +244,7 @@ async def export_payments(
                 export_data.append(export_record)
         
         df = pd.DataFrame(export_data)
-        print(f"Export data count: {len(export_data)}")
-        print(f"DataFrame shape: {df.shape}")
-        if len(export_data) > 0:
-            print(f"Sample export data: {export_data[0]}")
     except Exception as e:
-        print(f"Error in export_payments: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Export failed: {str(e)}")
     
     if format == "excel":

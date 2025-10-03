@@ -34,7 +34,6 @@ async def handle_midtrans_notification(request: Request):
     """Handle payment notification from Midtrans (webhook)"""
     try:
         notification_data = await request.json()
-        print("📩 Notif dari Midtrans:", notification_data)
 
         # Normalisasi VA info jika dikirim dalam va_numbers
         if isinstance(notification_data, dict) and notification_data.get("va_numbers"):
@@ -52,7 +51,6 @@ async def handle_midtrans_notification(request: Request):
         return await payment_controller.handle_midtrans_notification(notification)
 
     except Exception as e:
-        print("❌ Webhook error:", e)
         return {"status": "error", "message": str(e)}
 
 

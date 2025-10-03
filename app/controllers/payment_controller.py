@@ -264,8 +264,6 @@ class PaymentController:
             midtrans_status = await self.midtrans_service.check_payment_status(identifier)
             new_status = self.midtrans_service._map_midtrans_status(midtrans_status.get("status", "pending"))
             
-            logger.info(f"Force check - Midtrans status: {midtrans_status.get('status')}, mapped to: {new_status}")
-            
             if new_status != payment["status"]:
                 update_data = {
                     "status": new_status,
@@ -279,19 +277,16 @@ class PaymentController:
                         {"id": payment["fee_id"]},
                         {"$set": {"status": "Lunas"}}
                     )
-                    logger.info(f"Force check - Updated fee {payment['fee_id']} to Lunas")
                 elif new_status == "Failed":
                     await db.fees.update_one(
                         {"id": payment["fee_id"]},
                         {"$set": {"status": "Belum Bayar"}}
                     )
-                    logger.info(f"Force check - Updated fee {payment['fee_id']} to Belum Bayar")
                 
                 await db.payments.update_one(
                     {"id": payment_id},
                     {"$set": update_data}
                 )
-                logger.info(f"Force check - Updated payment {payment_id} with data: {update_data}")
                 
                 return {
                     "payment_id": payment_id,

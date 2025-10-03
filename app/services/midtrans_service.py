@@ -86,10 +86,6 @@ class MidtransService:
                 "notification_url": "https://yourdomain.com/api/payments/notification"
             }
             
-            # Log transaction data for debugging
-            logger.info(f"Creating Midtrans transaction with order_id: {order_id}")
-            logger.info(f"Transaction data: {transaction_data}")
-            
             # Add payment method specific configurations
             if payment_request.payment_method == "credit_card":
                 transaction_data["credit_card"] = {
@@ -117,9 +113,6 @@ class MidtransService:
                     status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                     detail=f"Gagal menghubungi Midtrans: {str(api_error)}"
                 )
-            
-            # Log response for debugging
-            logger.info(f"Midtrans response: {response}")
             
             # Check if response contains required fields (Snap API success indicators)
             if not response.get("token") or not response.get("redirect_url"):
@@ -185,9 +178,6 @@ class MidtransService:
         """Handle payment notification from Midtrans"""
         db = get_database()
         
-        # Log notification for debugging
-        logger.info(f"Received Midtrans notification: {notification.dict()}")
-        
         # Verify signature
         if not self._verify_signature(notification):
             logger.error(f"Invalid signature for notification: {notification.dict()}")
@@ -199,9 +189,6 @@ class MidtransService:
         # Find payment by transaction_id; fallback to order_id
         payment = await db.payments.find_one({"transaction_id": notification.transaction_id})
         if not payment:
-            logger.warning(
-                f"Payment not found by transaction_id {notification.transaction_id}, trying order_id {notification.order_id}"
-            )
             payment = await db.payments.find_one({"order_id": notification.order_id})
             if payment and not payment.get("transaction_id"):
                 # Backfill transaction_id from notification
@@ -218,11 +205,8 @@ class MidtransService:
                 detail="Payment not found"
             )
         
-        logger.info(f"Found payment: {payment['id']} with current status: {payment['status']}")
-        
         # Update payment status based on Midtrans status
         new_status = self._map_midtrans_status(notification.transaction_status)
-        logger.info(f"Mapping Midtrans status '{notification.transaction_status}' to '{new_status}'")
         
         update_data = {
             "midtrans_status": notification.transaction_status,
@@ -238,32 +222,26 @@ class MidtransService:
                 "settled_at": datetime.now(timezone.utc)
             })
             
-            logger.info(f"Updating payment to Success status for payment: {payment['id']}")
-            
             # Update fee status
             await db.fees.update_one(
                 {"id": payment["fee_id"]},
                 {"$set": {"status": "Lunas"}}
             )
-            logger.info(f"Updated fee {payment['fee_id']} to Lunas status")
             
         elif new_status == "Failed":
             update_data["status"] = "Failed"
-            logger.info(f"Updating payment to Failed status for payment: {payment['id']}")
             
             # Update fee status back to unpaid
             await db.fees.update_one(
                 {"id": payment["fee_id"]},
                 {"$set": {"status": "Belum Bayar"}}
             )
-            logger.info(f"Updated fee {payment['fee_id']} to Belum Bayar status")
         
         # Update payment
         await db.payments.update_one(
             {"transaction_id": notification.transaction_id},
             {"$set": update_data}
         )
-        logger.info(f"Updated payment {payment['id']} with data: {update_data}")
         
         return {"message": "Notification processed successfully"}
     
@@ -299,11 +277,9 @@ class MidtransService:
         try:
             # If identifier looks like a transaction_id (UUID format), try to find the order_id first
             if len(identifier) == 36 and identifier.count('-') == 4:  # UUID format
-                logger.warning(f"Received transaction_id {identifier} for status check, attempting to find order_id")
                 db = get_database()
                 payment = await db.payments.find_one({"transaction_id": identifier})
                 if payment and payment.get("order_id"):
-                    logger.info(f"Found order_id {payment['order_id']} for transaction_id {identifier}")
                     identifier = payment["order_id"]
                 else:
                     logger.error(f"No order_id found for transaction_id {identifier}")
@@ -313,7 +289,6 @@ class MidtransService:
                     )
             
             # Midtrans Core API expects order_id for status checks
-            logger.info(f"Checking payment status with order_id: {identifier}")
             response = self.core_api.transactions.status(identifier)
             
             if not response:
@@ -338,13 +313,11 @@ class MidtransService:
             
             # Handle specific error cases
             if error_status == 404:
-                logger.warning(f"Transaction {identifier} not found in Midtrans - may have expired or been cancelled")
                 # Try to update the payment status to expired if it's still pending
                 try:
                     db = get_database()
                     payment = await db.payments.find_one({"order_id": identifier})
                     if payment and payment.get("status") == "Pending":
-                        logger.info(f"Updating expired payment {payment['id']} to Failed status")
                         await db.payments.update_one(
                             {"order_id": identifier},
                             {"$set": {"status": "Failed", "midtrans_status": "expire"}}

@@ -26,7 +26,6 @@ async def init_database():
         database_manager.client = AsyncIOMotorClient(mongo_url)
         database_manager.database = database_manager.client[database_name]
         database_manager.database.command("ping")
-        logger.info("Database connected successfully")
     except Exception as e:
         logger.error(f"Database connection failed: {e}")
         raise e
@@ -35,7 +34,6 @@ async def close_database():
     # tutup koneksi database
     if database_manager.client:
         database_manager.client.close()
-        logger.info("Database connection closed")
 
 def get_database() -> AsyncIOMotorDatabase:
     """

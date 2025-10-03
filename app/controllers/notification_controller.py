@@ -1,7 +1,11 @@
 from app.models import Notification, NotificationResponse
 from app.config.database import get_database
+from app.services.websocket_manager import websocket_manager
 import uuid
+import logging
 from datetime import datetime, timezone, timedelta
+
+logger = logging.getLogger(__name__)
 
 class NotificationController:
     async def get_user_notifications(self, user_id: str) -> list[NotificationResponse]:
@@ -19,8 +23,8 @@ class NotificationController:
         """Create a new notification"""
         db = get_database()
         
-        # Use Jakarta timezone for created_at
-        jakarta_tz = timezone(timedelta(hours=7))
+        # Use UTC timezone for created_at (consistent with payment data)
+        utc_tz = timezone.utc
         notification_dict = {
             "id": str(uuid.uuid4()),
             "user_id": user_id,
@@ -28,7 +32,7 @@ class NotificationController:
             "message": message,
             "type": notification_type,
             "is_read": False,
-            "created_at": datetime.now(jakarta_tz)
+            "created_at": datetime.now(utc_tz)
         }
         
         await db.notifications.insert_one(notification_dict)
@@ -39,16 +43,16 @@ class NotificationController:
         """Create notifications for all users (admin only)"""
         db = get_database()
         
-        # Use Jakarta timezone for created_at
-        jakarta_tz = timezone(timedelta(hours=7))
-        current_time = datetime.now(jakarta_tz)
+        # Use UTC timezone for created_at (consistent with payment data)
+        utc_tz = timezone.utc
+        current_time = datetime.now(utc_tz)
         
         # Get all users
         users = await db.users.find({}, {"_id": 0}).to_list(1000)
         
         notifications = []
         for user in users:
-            notifications.append({
+            notification_data = {
                 "id": str(uuid.uuid4()),
                 "user_id": user["id"],
                 "title": title,
@@ -56,10 +60,26 @@ class NotificationController:
                 "type": notification_type,
                 "is_read": False,
                 "created_at": current_time
-            })
+            }
+            notifications.append(notification_data)
         
         if notifications:
+            # Insert notifications to database
             await db.notifications.insert_many(notifications)
+            
+            # Send real-time notifications to connected users in parallel
+            import asyncio
+            tasks = []
+            for notification in notifications:
+                task = websocket_manager.send_notification(
+                    notification["user_id"], 
+                    notification
+                )
+                tasks.append(task)
+            
+            # Execute all WebSocket sends in parallel
+            if tasks:
+                await asyncio.gather(*tasks, return_exceptions=True)
         
         return {"message": f"Notifikasi berhasil dikirim ke {len(notifications)} pengguna"}
 
