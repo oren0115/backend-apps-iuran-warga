@@ -108,7 +108,7 @@ class PaymentResponse(PaymentBase):
     user_id: str
     order_id: Optional[str] = None
     status: str
-    created_at: Union[datetime, str]
+    created_at: datetime
     transaction_id: Optional[str] = None
     payment_token: Optional[str] = None
     payment_url: Optional[str] = None
@@ -116,16 +116,24 @@ class PaymentResponse(PaymentBase):
     payment_type: Optional[str] = None
     bank: Optional[str] = None
     va_number: Optional[str] = None
-    expiry_time: Optional[Union[datetime, str]] = None
-    settled_at: Optional[Union[datetime, str]] = None
+    expiry_time: Optional[datetime] = None
+    settled_at: Optional[datetime] = None
 
-    # validator: convert str -> datetime
+    class Config:
+        json_encoders = {
+            datetime: lambda v: v.isoformat() if v else None
+        }
+
+    # validator: convert str -> datetime and ensure UTC
     @validator("created_at", "expiry_time", "settled_at", pre=True, always=True)
     def parse_datetime(cls, v):
+        if v is None:
+            return None
         if isinstance(v, str):
             try:
                 dt = datetime.fromisoformat(v)
                 if dt.tzinfo is None:
+                    # If no timezone, assume it's UTC
                     dt = dt.replace(tzinfo=timezone.utc)
                 return dt
             except Exception:
@@ -134,6 +142,11 @@ class PaymentResponse(PaymentBase):
                     return dt.replace(tzinfo=timezone.utc)
                 except Exception:
                     return None
+        if isinstance(v, datetime):
+            # Ensure datetime has timezone info (UTC)
+            if v.tzinfo is None:
+                return v.replace(tzinfo=timezone.utc)
+            return v
         return v
 
 class PaymentWithDetails(PaymentResponse):
@@ -190,6 +203,11 @@ class PaymentCreateResponse(BaseModel):
     payment_type: str
     bank: Optional[str] = None
     va_number: Optional[str] = None
+
+    class Config:
+        json_encoders = {
+            datetime: lambda v: v.isoformat() if v else None
+        }
 
 class MidtransNotificationRequest(BaseModel):
     transaction_id: str

@@ -47,9 +47,8 @@ class MidtransService:
         
         # Create transaction details
         # Generate shorter order_id (max 50 chars for Midtrans)
-        # Use Jakarta timezone for consistent timestamp
-        jakarta_tz = timezone(timedelta(hours=7))
-        timestamp = int(datetime.now(jakarta_tz).timestamp())
+        # Use UTC for consistent timestamp
+        timestamp = int(datetime.now(timezone.utc).timestamp())
         order_id = f"RT{timestamp}{payment_request.fee_id[-8:]}"  # Use last 8 chars of fee_id
         transaction_details = {
             "order_id": order_id,
@@ -134,8 +133,8 @@ class MidtransService:
             # Generate transaction_id if not provided by Midtrans (Snap API doesn't return it)
             transaction_id = response.get("transaction_id") or f"txn_{timestamp}_{payment_request.fee_id[-8:]}"
             
-            # Save payment to database with Jakarta timezone
-            current_time = datetime.now(jakarta_tz)
+            # Save payment to database with UTC timezone
+            current_time = datetime.now(timezone.utc)
             payment_data = {
                 "id": f"pay_{timestamp}",
                 "fee_id": payment_request.fee_id,
@@ -152,7 +151,7 @@ class MidtransService:
                 "payment_type": payment_request.payment_method,
                 "bank": None,  # Will be updated via webhook
                 "va_number": None,  # Will be updated via webhook
-                "expiry_time": current_time + timedelta(hours=24)  # Default 24 hours in Jakarta timezone
+                "expiry_time": current_time + timedelta(hours=24)  # Default 24 hours expiry
             }
             
             await db.payments.insert_one(payment_data)
@@ -233,11 +232,10 @@ class MidtransService:
         }
         
         if new_status == "Success":
-            # Use Jakarta timezone for settled_at
-            jakarta_tz = timezone(timedelta(hours=7))
+            # Use UTC for settled_at
             update_data.update({
                 "status": "Success",
-                "settled_at": datetime.now(jakarta_tz)
+                "settled_at": datetime.now(timezone.utc)
             })
             
             logger.info(f"Updating payment to Success status for payment: {payment['id']}")
@@ -299,8 +297,32 @@ class MidtransService:
     async def check_payment_status(self, identifier: str) -> dict:
         """Check payment status from Midtrans using order_id (preferred) or transaction_id"""
         try:
+            # If identifier looks like a transaction_id (UUID format), try to find the order_id first
+            if len(identifier) == 36 and identifier.count('-') == 4:  # UUID format
+                logger.warning(f"Received transaction_id {identifier} for status check, attempting to find order_id")
+                db = get_database()
+                payment = await db.payments.find_one({"transaction_id": identifier})
+                if payment and payment.get("order_id"):
+                    logger.info(f"Found order_id {payment['order_id']} for transaction_id {identifier}")
+                    identifier = payment["order_id"]
+                else:
+                    logger.error(f"No order_id found for transaction_id {identifier}")
+                    raise HTTPException(
+                        status_code=status.HTTP_404_NOT_FOUND,
+                        detail="Transaction not found in database"
+                    )
+            
             # Midtrans Core API expects order_id for status checks
+            logger.info(f"Checking payment status with order_id: {identifier}")
             response = self.core_api.transactions.status(identifier)
+            
+            if not response:
+                logger.error(f"Empty response from Midtrans for order_id: {identifier}")
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Transaction not found in Midtrans"
+                )
+            
             return {
                 "identifier": identifier,
                 "status": response.get("transaction_status"),
@@ -309,8 +331,38 @@ class MidtransService:
                 "fraud_status": response.get("fraud_status")
             }
         except Exception as e:
-            logger.error(f"Failed to check payment status: {str(e)}")
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Gagal mengecek status pembayaran"
-            )
+            error_status = getattr(e, 'status_code', 'Unknown')
+            logger.error(f"Failed to check payment status: Midtrans API is returning API error. API status code: `{error_status}`.")
+            if hasattr(e, 'response') and e.response:
+                logger.error(f"API response: {e.response}")
+            
+            # Handle specific error cases
+            if error_status == 404:
+                logger.warning(f"Transaction {identifier} not found in Midtrans - may have expired or been cancelled")
+                # Try to update the payment status to expired if it's still pending
+                try:
+                    db = get_database()
+                    payment = await db.payments.find_one({"order_id": identifier})
+                    if payment and payment.get("status") == "Pending":
+                        logger.info(f"Updating expired payment {payment['id']} to Failed status")
+                        await db.payments.update_one(
+                            {"order_id": identifier},
+                            {"$set": {"status": "Failed", "midtrans_status": "expire"}}
+                        )
+                        # Update fee status back to unpaid
+                        await db.fees.update_one(
+                            {"id": payment["fee_id"]},
+                            {"$set": {"status": "Belum Bayar"}}
+                        )
+                except Exception as update_error:
+                    logger.error(f"Failed to update expired payment: {str(update_error)}")
+                
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Transaksi tidak ditemukan di Midtrans. Mungkin sudah expired atau dibatalkan."
+                )
+            else:
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail="Gagal mengecek status pembayaran"
+                )

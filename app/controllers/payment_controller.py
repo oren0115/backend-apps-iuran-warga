@@ -95,9 +95,8 @@ class PaymentController:
                             'midtrans_status': midtrans_result.get('status', 'pending')
                         }
                         if mapped_status == 'Success':
-                            # Use Jakarta timezone for settled_at
-                            jakarta_tz = timezone(timedelta(hours=7))
-                            update_data['settled_at'] = datetime.now(jakarta_tz)
+                            # Use UTC for settled_at
+                            update_data['settled_at'] = datetime.now(timezone.utc)
                             await db.fees.update_one(
                                 {"id": payment["fee_id"]},
                                 {"$set": {"status": "Lunas"}}
@@ -199,9 +198,11 @@ class PaymentController:
                 detail="Payment not found"
             )
         
-        if payment["status"] == "Pending" and payment.get("transaction_id"):
+        if payment["status"] == "Pending" and (payment.get("order_id") or payment.get("transaction_id")):
             try:
-                midtrans_status = await self.midtrans_service.check_payment_status(payment["transaction_id"])
+                # Prefer order_id for Midtrans status checks
+                identifier = payment.get("order_id") or payment.get("transaction_id")
+                midtrans_status = await self.midtrans_service.check_payment_status(identifier)
                 new_status = self.midtrans_service._map_midtrans_status(midtrans_status.get("status", "pending"))
                 
                 if new_status != payment["status"]:
@@ -211,9 +212,8 @@ class PaymentController:
                     }
                     
                     if new_status == "Success":
-                        # Use Jakarta timezone for settled_at
-                        jakarta_tz = timezone(timedelta(hours=7))
-                        update_data["settled_at"] = datetime.now(jakarta_tz)
+                        # Use UTC for settled_at
+                        update_data["settled_at"] = datetime.now(timezone.utc)
                         await db.fees.update_one(
                             {"id": payment["fee_id"]},
                             {"$set": {"status": "Lunas"}}
@@ -259,7 +259,9 @@ class PaymentController:
             )
         
         try:
-            midtrans_status = await self.midtrans_service.check_payment_status(payment["order_id"])
+            # Use order_id for Midtrans status checks
+            identifier = payment["order_id"]
+            midtrans_status = await self.midtrans_service.check_payment_status(identifier)
             new_status = self.midtrans_service._map_midtrans_status(midtrans_status.get("status", "pending"))
             
             logger.info(f"Force check - Midtrans status: {midtrans_status.get('status')}, mapped to: {new_status}")
@@ -271,9 +273,8 @@ class PaymentController:
                 }
                 
                 if new_status == "Success":
-                    # Use Jakarta timezone for settled_at
-                    jakarta_tz = timezone(timedelta(hours=7))
-                    update_data["settled_at"] = datetime.now(jakarta_tz)
+                    # Use UTC for settled_at
+                    update_data["settled_at"] = datetime.now(timezone.utc)
                     await db.fees.update_one(
                         {"id": payment["fee_id"]},
                         {"$set": {"status": "Lunas"}}
