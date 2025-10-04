@@ -19,7 +19,7 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 # Add security middleware
 app.add_middleware(
     TrustedHostMiddleware, 
-    allowed_hosts=["localhost", "127.0.0.1", "*.vercel.app"]
+    allowed_hosts=["localhost", "127.0.0.1", "*.vercel.app", "*.onrender.com",]
 )
 
 # Add CORS middleware
