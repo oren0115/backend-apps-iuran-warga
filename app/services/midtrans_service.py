@@ -78,12 +78,8 @@ class MidtransService:
                 "transaction_details": transaction_details,
                 "customer_details": customer_details,
                 "item_details": item_details,
-                "callbacks": {
-                    "finish": "https://yourdomain.com/payment/finish",
-                    "unfinish": "https://yourdomain.com/payment/unfinish", 
-                    "error": "https://yourdomain.com/payment/error"
-                },
-                "notification_url": "https://yourdomain.com/api/payments/notification"
+                "callbacks": midtrans_config.get_frontend_callback_urls(),
+                "notification_url": midtrans_config.get_notification_url()
             }
             
             # Add payment method specific configurations

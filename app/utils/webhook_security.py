@@ -31,7 +31,7 @@ def verify_webhook_signature(request_body: str, signature: str) -> bool:
     """
     Verify webhook signature using environment variable
     """
-    webhook_secret = os.getenv("WEBHOOK_SECRET", "default_secret_key")
+    webhook_secret = os.getenv("WEBHOOK_SECRET")
     return verify_midtrans_signature(request_body, signature, webhook_secret)
 
 def validate_webhook_request(request_body: str, signature: str) -> None:
