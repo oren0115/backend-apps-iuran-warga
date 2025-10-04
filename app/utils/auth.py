@@ -14,9 +14,9 @@ load_dotenv()
 security = HTTPBearer()
 
 # JWT Configuration with validation
-JWT_SECRET = os.getenv("JWT_SECRET") or "asldfjKdfhjksfhesesfjs12345678901234567890"
+JWT_SECRET = os.getenv("JWT_SECRET")
 JWT_ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
-JWT_ACCESS_TOKEN_EXPIRE_HOURS = int(os.getenv("JWT_ACCESS_TOKEN_EXPIRE_HOURS", "24"))
+JWT_ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("JWT_ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
 
 # Validate JWT configuration
 if not JWT_SECRET:
@@ -43,7 +43,7 @@ class AuthManager:
             to_encode = data.copy()
             # Use Jakarta timezone for token expiration
             jakarta_tz = timezone(timedelta(hours=7))
-            expire = datetime.now(jakarta_tz) + timedelta(hours=JWT_ACCESS_TOKEN_EXPIRE_HOURS)
+            expire = datetime.now(jakarta_tz) + timedelta(minutes=JWT_ACCESS_TOKEN_EXPIRE_MINUTES)
             to_encode.update({"exp": expire})
             return jwt.encode(to_encode, JWT_SECRET, algorithm=JWT_ALGORITHM)
         except Exception as e:
