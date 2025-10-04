@@ -32,7 +32,7 @@ app.add_middleware(
         "http://localhost:5173",
         "http://127.0.0.1:5173",
         "https://iuran-warga-phi.vercel.app",
-        "https://backend-apps-iuran-warga.onrender.com",  # Android emulator localhost
+        "https://backend-apps-iuran-warga.onrender.com",
     ],
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["Content-Type", "Authorization", "X-Requested-With"],

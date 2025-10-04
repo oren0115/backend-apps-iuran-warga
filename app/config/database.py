@@ -21,8 +21,8 @@ database_manager = DatabaseManager()
 async def init_database():
     # inisiasi koneksi database
     try:
-        mongo_url = os.environ.get("MONGO_URL", "mongodb://localhost:27017")
-        database_name = os.environ.get("DB_NAME", "rt_rw_management")
+        mongo_url = os.environ.get("MONGO_URL")
+        database_name = os.environ.get("DB_NAME")
         database_manager.client = AsyncIOMotorClient(mongo_url)
         database_manager.database = database_manager.client[database_name]
         database_manager.database.command("ping")
