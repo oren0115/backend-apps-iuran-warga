@@ -7,11 +7,13 @@ import uuid
 class UserBase(BaseModel):
     username: str
     nama: str
-    alamat: str
-    nomor_rumah: str
-    nomor_hp: str
+    alamat: Optional[str] = None
+    nomor_rumah: Optional[str] = None
+    nomor_hp: Optional[str] = None
     # Optional: tipe rumah pengguna, contoh: "60M2", "72M2", "HOOK"
     tipe_rumah: Optional[str] = None
+    # Optional: Telegram chat ID untuk notifikasi
+    telegram_chat_id: Optional[str] = None
 
 
 class UserCreate(UserBase):
@@ -26,6 +28,7 @@ class UserUpdate(BaseModel):
     nomor_hp: Optional[str] = None
     tipe_rumah: Optional[str] = None
     is_admin: Optional[bool] = None
+    telegram_chat_id: Optional[str] = None
 
 
 class PasswordUpdate(BaseModel):
@@ -48,9 +51,16 @@ class User(UserBase):
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone(timedelta(hours=7))))
 
 
-class UserResponse(UserBase):
+class UserResponse(BaseModel):
     id: str
-    is_admin: bool
+    username: str
+    nama: str
+    alamat: Optional[str] = None
+    nomor_rumah: Optional[str] = None
+    nomor_hp: Optional[str] = None
+    tipe_rumah: Optional[str] = None
+    telegram_chat_id: Optional[str] = None
+    is_admin: bool = False
     created_at: datetime
 
 

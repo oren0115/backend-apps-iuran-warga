@@ -1,6 +1,7 @@
 from app.models import Notification, NotificationResponse
 from app.config.database import get_database
 from app.services.websocket_manager import websocket_manager
+from app.services.telegram_service import telegram_service
 import uuid
 import logging
 from datetime import datetime, timezone, timedelta
@@ -80,8 +81,26 @@ class NotificationController:
             # Execute all WebSocket sends in parallel
             if tasks:
                 await asyncio.gather(*tasks, return_exceptions=True)
+            
+            # Send Telegram notification
+            telegram_result = None
+            try:
+                telegram_result = await telegram_service.send_broadcast_message(
+                    title, message, notification_type
+                )
+                if telegram_result.get("success"):
+                    logger.info(f"Telegram notification sent: {telegram_result.get('message')}")
+                else:
+                    logger.warning(f"Telegram notification failed: {telegram_result.get('message')}")
+            except Exception as e:
+                logger.error(f"Error sending Telegram notification: {e}")
+                telegram_result = {"success": False, "message": f"Error: {str(e)}"}
         
-        return {"message": f"Notifikasi berhasil dikirim ke {len(notifications)} pengguna"}
+        response = {"message": f"Notifikasi berhasil dikirim ke {len(notifications)} pengguna"}
+        if telegram_result:
+            response["telegram_result"] = telegram_result
+        
+        return response
 
     async def mark_notification_as_read(self, notification_id: str, user_id: str) -> dict:
         """Mark a notification as read"""

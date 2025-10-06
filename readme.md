@@ -1,17 +1,20 @@
 # RT/RW Fee Management System
 
-Sistem manajemen iuran RT/RW berbasis FastAPI untuk mengelola pembayaran iuran bulanan warga dengan integrasi payment gateway Midtrans.
+Sistem manajemen IPL berbasis FastAPI untuk mengelola pembayaran iuran bulanan warga dengan integrasi payment gateway Midtrans dan notifikasi Telegram.
 
 ## 🚀 Fitur Utama
 
-- **Manajemen User**: Registrasi, login, dan profil warga
+- **Manajemen User**: Registrasi, login, profil warga, dan manajemen user lengkap
 - **Manajemen Iuran**: Generate iuran bulanan otomatis untuk semua warga
 - **Sistem Pembayaran**: Integrasi Midtrans untuk pembayaran online (Credit Card, Bank Transfer, GoPay)
-- **Notifikasi**: Sistem notifikasi untuk pengumuman dan reminder
-- **Dashboard Admin**: Statistik dan monitoring sistem
+- **Notifikasi Real-time**: Sistem notifikasi WebSocket untuk pengumuman dan reminder
+- **Notifikasi Telegram**: Broadcast notifikasi ke Telegram bot untuk semua warga
+- **Dashboard Admin**: Statistik dan monitoring sistem lengkap
 - **Export Laporan**: Export data iuran dan pembayaran ke Excel/PDF
 - **Autentikasi JWT**: Keamanan dengan token-based authentication
 - **Webhook Midtrans**: Otomatis update status pembayaran
+- **User Management**: CRUD lengkap untuk manajemen user (Create, Read, Update, Delete)
+- **Telegram Integration**: Bot Telegram untuk notifikasi otomatis ke warga
 
 ## 🛠️ Teknologi yang Digunakan
 
@@ -21,6 +24,8 @@ Sistem manajemen iuran RT/RW berbasis FastAPI untuk mengelola pembayaran iuran b
 - **JWT** - JSON Web Token untuk autentikasi
 - **Uvicorn** - ASGI server untuk production
 - **Midtrans** - Payment gateway untuk pembayaran online
+- **Telegram Bot API** - Notifikasi otomatis ke warga
+- **WebSocket** - Real-time notifications
 - **Pandas** - Data processing untuk export laporan
 - **ReportLab** - PDF generation
 - **XlsxWriter** - Excel export
@@ -34,6 +39,7 @@ Sistem manajemen iuran RT/RW berbasis FastAPI untuk mengelola pembayaran iuran b
 - Python 3.8+
 - MongoDB 4.0+
 - pip (Python package manager)
+- Telegram Bot Token (untuk notifikasi)
 
 ## 📦 Dependencies
 
@@ -51,6 +57,8 @@ Sistem manajemen iuran RT/RW berbasis FastAPI untuk mengelola pembayaran iuran b
 
 - `midtransclient==1.4.2` - Midtrans payment gateway
 - `pyngrok==7.3.0` - Ngrok integration
+- `python-telegram-bot==20.7` - Telegram Bot API
+- `aiohttp==3.9.1` - HTTP client untuk Telegram
 
 ### Data Processing & Export
 
@@ -58,6 +66,11 @@ Sistem manajemen iuran RT/RW berbasis FastAPI untuk mengelola pembayaran iuran b
 - `XlsxWriter==3.2.0` - Excel export
 - `openpyxl==3.1.2` - Excel file handling
 - `reportlab==4.2.2` - PDF generation
+
+### Real-time & Notifications
+
+- `websockets==12.0` - WebSocket support
+- `slowapi==0.1.9` - Rate limiting
 
 ### Framework Dependencies
 
@@ -89,9 +102,22 @@ Sistem manajemen iuran RT/RW berbasis FastAPI untuk mengelola pembayaran iuran b
    MIDTRANS_SERVER_KEY=your-midtrans-server-key
    MIDTRANS_CLIENT_KEY=your-midtrans-client-key
    MIDTRANS_IS_PRODUCTION=false
+
+   # Telegram Bot Configuration
+   TELEGRAM_BOT_TOKEN=your-telegram-bot-token-here
+   TELEGRAM_CHAT_ID=your-telegram-chat-id-here
+   TELEGRAM_WEBHOOK_URL=https://your-backend-domain.com/api/telegram/webhook
+   TELEGRAM_SEND_INDIVIDUAL=true
    ```
 
-4. **Jalankan aplikasi**
+4. **Setup Telegram Bot** (Opsional)
+
+   ```bash
+   # Setup webhook untuk Telegram bot
+   python setup_telegram_webhook.py
+   ```
+
+5. **Jalankan aplikasi**
 
    ```bash
    python main.py
@@ -113,7 +139,8 @@ backend/
 ├── app/
 │   ├── config/
 │   │   ├── database.py          # Konfigurasi database MongoDB
-│   │   └── midtrans.py          # Konfigurasi Midtrans payment gateway
+│   │   ├── midtrans.py          # Konfigurasi Midtrans payment gateway
+│   │   └── telegram.py          # Konfigurasi Telegram bot
 │   ├── controllers/
 │   │   ├── admin_controller.py  # Logic untuk admin operations
 │   │   ├── fee_controller.py    # Logic untuk manajemen iuran
@@ -121,20 +148,37 @@ backend/
 │   │   ├── payment_controller.py       # Logic untuk pembayaran
 │   │   └── user_controller.py          # Logic untuk user operations
 │   ├── models/
-│   │   └── schemas.py           # Pydantic models untuk data validation
+│   │   ├── user.py              # User models dan schemas
+│   │   ├── fee.py               # Fee models dan schemas
+│   │   ├── payment.py           # Payment models dan schemas
+│   │   ├── notification.py      # Notification models dan schemas
+│   │   └── response.py          # Response models
 │   ├── routes/
 │   │   ├── admin_routes.py      # API endpoints untuk admin
 │   │   ├── fee_routes.py        # API endpoints untuk iuran
 │   │   ├── notification_routes.py  # API endpoints untuk notifikasi
 │   │   ├── payment_routes.py    # API endpoints untuk pembayaran
-│   │   └── user_routes.py       # API endpoints untuk user
+│   │   ├── user_routes.py       # API endpoints untuk user
+│   │   ├── telegram_routes.py   # API endpoints untuk Telegram webhook
+│   │   └── websocket_routes.py  # WebSocket endpoints
 │   ├── services/
-│   │   └── midtrans_service.py  # Service untuk integrasi Midtrans
+│   │   ├── midtrans_service.py  # Service untuk integrasi Midtrans
+│   │   ├── telegram_service.py  # Service untuk integrasi Telegram
+│   │   └── websocket_manager.py # WebSocket manager
 │   └── utils/
-│       └── auth.py              # Utility untuk autentikasi JWT
+│       ├── auth.py              # Utility untuk autentikasi JWT
+│       └── webhook_security.py  # Utility untuk webhook security
 ├── main.py                      # Entry point aplikasi
 ├── requirements.txt             # Dependencies
-└── readme.md                    # Dokumentasi project
+├── setup_telegram_webhook.py   # Script setup Telegram webhook
+├── debug_telegram.py           # Script debug Telegram integration
+├── test_telegram_integration.py # Script test Telegram
+├── TELEGRAM_SETUP.md           # Panduan setup Telegram
+├── TELEGRAM_INDIVIDUAL_SETUP.md # Panduan setup individual notifications
+├── TROUBLESHOOTING_TELEGRAM.md # Panduan troubleshooting Telegram
+├── DEVELOPMENT_SETUP.md        # Panduan development dengan Ngrok
+├── TESTING_GUIDE.md            # Panduan testing lengkap
+└── readme.md                   # Dokumentasi project
 ```
 
 ## 🔐 API Endpoints
@@ -149,12 +193,22 @@ backend/
 ### Admin Endpoints
 
 - `GET /api/admin/users` - Get semua users (admin only)
+- `POST /api/admin/users` - Buat user baru (admin only)
+- `PUT /api/admin/users/{user_id}` - Update user (admin only)
+- `DELETE /api/admin/users/{user_id}` - Hapus user (admin only)
+- `PATCH /api/admin/users/{user_id}/promote` - Promote user ke admin (admin only)
+- `PATCH /api/admin/users/{user_id}/demote` - Demote admin ke user (admin only)
+- `PATCH /api/admin/users/{user_id}/activate-telegram` - Aktifkan notifikasi Telegram (admin only)
+- `PATCH /api/admin/users/{user_id}/deactivate-telegram` - Nonaktifkan notifikasi Telegram (admin only)
+- `GET /api/admin/users/with-phone` - Get users dengan nomor HP (admin only)
+- `GET /api/admin/users/telegram-status` - Get status Telegram users (admin only)
 - `POST /api/admin/generate-fees` - Generate iuran bulanan (admin only)
 - `GET /api/admin/fees` - Get semua iuran (admin only)
 - `GET /api/admin/payments` - Get pending payments (admin only)
 - `PUT /api/admin/payments/{id}/approve` - Approve pembayaran (admin only)
 - `PUT /api/admin/payments/{id}/reject` - Reject pembayaran (admin only)
 - `POST /api/admin/notifications/broadcast` - Broadcast notifikasi (admin only)
+- `GET /api/admin/telegram/test` - Test koneksi Telegram (admin only)
 - `GET /api/admin/dashboard` - Get dashboard stats (admin only)
 - `POST /api/admin/init-sample-data` - Initialize sample data
 - `GET /api/admin/reports/fees/export` - Export laporan iuran ke Excel/PDF (admin only)
@@ -177,6 +231,14 @@ backend/
 - `GET /api/notifications` - Get notifikasi user (protected)
 - `PUT /api/notifications/{id}/read` - Mark notifikasi sebagai dibaca (protected)
 
+### Telegram Endpoints
+
+- `POST /api/telegram/webhook` - Webhook untuk menerima pesan dari Telegram bot
+
+### WebSocket Endpoints
+
+- `WS /ws/{user_id}` - WebSocket connection untuk real-time notifications
+
 ## 🗄️ Database Schema
 
 ### Collections
@@ -186,11 +248,14 @@ backend/
 ```json
 {
   "_id": "uuid",
+  "id": "string",
   "username": "string",
   "nama": "string",
   "alamat": "string",
   "nomor_rumah": "string",
   "nomor_hp": "string",
+  "tipe_rumah": "string",
+  "telegram_chat_id": "string",
   "password": "hashed_string",
   "is_admin": "boolean",
   "created_at": "datetime"
@@ -202,7 +267,8 @@ backend/
 ```json
 {
   "_id": "uuid",
-  "user_id": "uuid",
+  "id": "string",
+  "user_id": "string",
   "kategori": "string",
   "nominal": "integer",
   "bulan": "string",
@@ -217,8 +283,9 @@ backend/
 ```json
 {
   "_id": "uuid",
-  "fee_id": "uuid",
-  "user_id": "uuid",
+  "id": "string",
+  "fee_id": "string",
+  "user_id": "string",
   "order_id": "string",
   "transaction_id": "string",
   "amount": "integer",
@@ -241,13 +308,61 @@ backend/
 ```json
 {
   "_id": "uuid",
-  "user_id": "uuid",
+  "id": "string",
+  "user_id": "string",
   "title": "string",
   "message": "string",
   "type": "string",
   "is_read": "boolean",
   "created_at": "datetime"
 }
+```
+
+## 🤖 Telegram Bot Integration
+
+### Setup Telegram Bot
+
+1. **Buat Bot di Telegram**
+
+   - Chat dengan [@BotFather](https://t.me/botfather)
+   - Kirim `/newbot` dan ikuti instruksi
+   - Simpan bot token yang diberikan
+
+2. **Konfigurasi Environment**
+
+   ```env
+   TELEGRAM_BOT_TOKEN=your-bot-token-here
+   TELEGRAM_CHAT_ID=your-admin-chat-id-here
+   TELEGRAM_WEBHOOK_URL=https://your-domain.com/api/telegram/webhook
+   TELEGRAM_SEND_INDIVIDUAL=true
+   ```
+
+3. **Setup Webhook**
+   ```bash
+   python setup_telegram_webhook.py
+   ```
+
+### Cara Kerja Telegram Bot
+
+1. **User mengirim `/start` ke bot**
+2. **Bot mencari user berdasarkan:**
+   - Username (prioritas 1)
+   - Nama lengkap (prioritas 2)
+   - Nomor HP (prioritas 3)
+3. **Jika ditemukan:** Notifikasi Telegram aktif
+4. **Jika tidak ditemukan:** Bot minta nomor HP
+5. **Admin bisa aktifkan manual** via API endpoint
+
+### Admin Manual Activation
+
+```bash
+# Aktifkan notifikasi Telegram untuk user
+curl -X PATCH "http://localhost:8000/api/admin/users/{user_id}/activate-telegram?telegram_chat_id=123456789" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+
+# Nonaktifkan notifikasi Telegram
+curl -X PATCH "http://localhost:8000/api/admin/users/{user_id}/deactivate-telegram" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
 ```
 
 ## 🔒 Security Testing
@@ -293,6 +408,8 @@ Sebelum deploy ke production:
 - [ ] ✅ Security headers configured
 - [ ] ✅ Environment variables properly set
 - [ ] ✅ No known dependency vulnerabilities
+- [ ] ✅ Telegram bot webhook configured
+- [ ] ✅ Database backup strategy implemented
 
 ## 🚀 Deployment
 
@@ -312,7 +429,10 @@ python testing/run_security_tests.py https://your-staging-url.com
 
 # 2. Fix critical issues (lihat testing/IMPLEMENTATION_GUIDE.md)
 
-# 3. Deploy
+# 3. Setup Telegram webhook
+python setup_telegram_webhook.py
+
+# 4. Deploy
 uvicorn main:app --host 0.0.0.0 --port 8000
 ```
 
@@ -332,15 +452,19 @@ cd backend && uvicorn main:app --host 0.0.0.0 --port $PORT
 
 ## 🔒 Environment Variables
 
-| Variable                 | Description               | Default                     |
-| ------------------------ | ------------------------- | --------------------------- |
-| `MONGO_URL`              | MongoDB connection string | `mongodb://localhost:27017` |
-| `DB_NAME`                | Database name             | `rt_rw_management`          |
-| `JWT_SECRET_KEY`         | Secret key for JWT        | Required                    |
-| `JWT_ALGORITHM`          | JWT algorithm             | `HS256`                     |
-| `MIDTRANS_SERVER_KEY`    | Midtrans server key       | Required                    |
-| `MIDTRANS_CLIENT_KEY`    | Midtrans client key       | Required                    |
-| `MIDTRANS_IS_PRODUCTION` | Midtrans production mode  | `false`                     |
+| Variable                   | Description                   | Default                     |
+| -------------------------- | ----------------------------- | --------------------------- |
+| `MONGO_URL`                | MongoDB connection string     | `mongodb://localhost:27017` |
+| `DB_NAME`                  | Database name                 | `rt_rw_management`          |
+| `JWT_SECRET_KEY`           | Secret key for JWT            | Required                    |
+| `JWT_ALGORITHM`            | JWT algorithm                 | `HS256`                     |
+| `MIDTRANS_SERVER_KEY`      | Midtrans server key           | Required                    |
+| `MIDTRANS_CLIENT_KEY`      | Midtrans client key           | Required                    |
+| `MIDTRANS_IS_PRODUCTION`   | Midtrans production mode      | `false`                     |
+| `TELEGRAM_BOT_TOKEN`       | Telegram bot token            | Required                    |
+| `TELEGRAM_CHAT_ID`         | Admin chat ID                 | Required                    |
+| `TELEGRAM_WEBHOOK_URL`     | Webhook URL                   | Required                    |
+| `TELEGRAM_SEND_INDIVIDUAL` | Send individual notifications | `true`                      |
 
 ## 📝 Usage Examples
 
@@ -355,6 +479,7 @@ curl -X POST "http://localhost:8000/api/register" \
     "alamat": "Jl. Contoh No. 123",
     "nomor_rumah": "123",
     "nomor_hp": "08123456789",
+    "tipe_rumah": "60M2",
     "password": "password123"
   }'
 ```
@@ -377,7 +502,10 @@ curl -X POST "http://localhost:8000/api/admin/generate-fees" \
   -H "Authorization: Bearer YOUR_JWT_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
-    "bulan": "2024-01"
+    "bulan": "2024-01",
+    "tarif_60m2": 50000,
+    "tarif_72m2": 75000,
+    "tarif_hook": 100000
   }'
 ```
 
@@ -393,12 +521,39 @@ curl -X POST "http://localhost:8000/api/payments/create" \
   }'
 ```
 
-### 5. Export Laporan Iuran (Admin)
+### 5. Broadcast Notifikasi (Admin)
+
+```bash
+curl -X POST "http://localhost:8000/api/admin/notifications/broadcast" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "title": "Pengumuman Penting",
+    "message": "Ada rapat RT pada hari Minggu",
+    "notification_type": "pengumuman"
+  }'
+```
+
+### 6. Export Laporan Iuran (Admin)
 
 ```bash
 curl -X GET "http://localhost:8000/api/admin/reports/fees/export?bulan=2024-01&format=excel" \
   -H "Authorization: Bearer YOUR_JWT_TOKEN" \
   -o "laporan_iuran_2024-01.xlsx"
+```
+
+### 7. Aktifkan Notifikasi Telegram (Admin)
+
+```bash
+curl -X PATCH "http://localhost:8000/api/admin/users/warga001/activate-telegram?telegram_chat_id=123456789" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+### 8. Test Koneksi Telegram (Admin)
+
+```bash
+curl -X GET "http://localhost:8000/api/admin/telegram/test" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
 ```
 
 ## 🤝 Contributing
@@ -435,7 +590,14 @@ This project is licensed under the MIT License - see the LICENSE file for detail
    - Pastikan mode production/sandbox sudah benar
    - Periksa webhook URL configuration
 
-4. **Import/Export Error**
+4. **Telegram Integration Error**
+
+   - Periksa `TELEGRAM_BOT_TOKEN` di file `.env`
+   - Pastikan webhook URL sudah dikonfigurasi
+   - Periksa koneksi internet untuk webhook
+   - Lihat `TROUBLESHOOTING_TELEGRAM.md` untuk panduan lengkap
+
+5. **Import/Export Error**
    - Pastikan semua dependencies sudah terinstall
    - Periksa permission untuk menulis file
    - Pastikan format data sudah benar
@@ -446,6 +608,8 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 - Periksa logs di terminal untuk debugging
 - Gunakan MongoDB Compass untuk melihat data
 - Test API endpoints menggunakan Swagger UI
+- Gunakan `debug_telegram.py` untuk debug Telegram integration
+- Test webhook dengan `test_webhook.py`
 
 ## 📞 Support
 
@@ -453,4 +617,4 @@ Untuk pertanyaan atau bantuan, silakan buat issue di repository ini.
 
 ---
 
-**Dibuat dengan ❤️ untuk memudahkan manajemen iuran RT/RW**
+**Dibuat dengan ❤️ untuk memudahkan manajemen iuran RT/RW dengan notifikasi Telegram**

@@ -58,7 +58,13 @@ class WebSocketManager:
     async def _send_to_websocket(self, websocket: WebSocket, message: dict, user_id: str):
         """Helper method to send message to a single websocket"""
         try:
-            await websocket.send_text(json.dumps(message))
+            # Convert datetime objects to strings for JSON serialization
+            def json_serializer(obj):
+                if hasattr(obj, 'isoformat'):
+                    return obj.isoformat()
+                raise TypeError(f"Object of type {type(obj)} is not JSON serializable")
+            
+            await websocket.send_text(json.dumps(message, default=json_serializer))
         except Exception as e:
             logger.error(f"Error sending message to user {user_id}: {e}")
             # Remove the failed connection

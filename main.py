@@ -5,7 +5,7 @@ from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from app.config.database import init_database, close_database
-from app.routes import user_routes, fee_routes, payment_routes, notification_routes, admin_routes, websocket_routes
+from app.routes import user_routes, fee_routes, payment_routes, notification_routes, admin_routes, websocket_routes, telegram_routes
 import logging
 
 # Create the main app
@@ -19,7 +19,7 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 # Add security middleware
 app.add_middleware(
     TrustedHostMiddleware, 
-    allowed_hosts=["localhost", "127.0.0.1", "*.vercel.app", "*.onrender.com",]
+    allowed_hosts=["localhost", "127.0.0.1", "*.vercel.app", "*.onrender.com", "*.ngrok-free.app"]
 )
 
 # Add CORS middleware
@@ -33,6 +33,7 @@ app.add_middleware(
         "http://127.0.0.1:5173",
         "https://iuran-warga-phi.vercel.app",
         "https://backend-apps-iuran-warga.onrender.com",
+        "https://*.ngrok-free.app",
     ],
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["Content-Type", "Authorization", "X-Requested-With"],
@@ -45,6 +46,7 @@ app.include_router(payment_routes.router, prefix="/api", tags=["payments"])
 app.include_router(notification_routes.router, prefix="/api", tags=["notifications"])
 app.include_router(admin_routes.router, prefix="/api/admin", tags=["admin"])
 app.include_router(websocket_routes.router, prefix="/api", tags=["websocket"])
+app.include_router(telegram_routes.router, prefix="/api/telegram", tags=["telegram"])
 
 # Add security headers middleware
 @app.middleware("http")
@@ -79,7 +81,7 @@ async def shutdown_event():
 
 @app.get("/")
 async def root():
-    return {"message": "RT/RW Fee Management API is running"}
+    return {"message": "Api IPL Cluster Cannary is running"}
 
 if __name__ == "__main__":
     import uvicorn

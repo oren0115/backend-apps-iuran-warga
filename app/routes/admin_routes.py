@@ -10,6 +10,7 @@ from app.controllers.fee_controller import FeeController
 from app.controllers.payment_controller import PaymentController
 from app.controllers.notification_controller import NotificationController
 from app.controllers.admin_controller import AdminController
+from app.services.telegram_service import telegram_service
 from app.utils.auth import get_current_admin
 from app.config.database import get_database
 from fastapi import Path
@@ -131,6 +132,104 @@ async def broadcast_notification(
 ):
     """Send notification to all users (admin only)"""
     return await notification_controller.create_bulk_notifications(title, message, notification_type)
+
+@router.get("/telegram/test")
+async def test_telegram_connection(current_user = Depends(get_current_admin)):
+    """Test Telegram bot connection (admin only)"""
+    result = await telegram_service.test_connection()
+    return result
+
+@router.get("/users/with-phone")
+async def get_users_with_phone(current_user = Depends(get_current_admin)):
+    """Get all users with phone numbers for broadcast (admin only)"""
+    db = get_database()
+    users = await db.users.find(
+        {"nomor_hp": {"$exists": True, "$ne": ""}, "is_admin": False}, 
+        {"_id": 0, "id": 1, "nama": 1, "nomor_hp": 1, "nomor_rumah": 1, "telegram_chat_id": 1}
+    ).to_list(1000)
+    
+    return {
+        "users": users,
+        "total": len(users)
+    }
+
+@router.get("/users/telegram-status")
+async def get_telegram_user_status(current_user = Depends(get_current_admin)):
+    """Get detailed Telegram user status for debugging (admin only)"""
+    db = get_database()
+    
+    # Get all users with phone numbers
+    all_users = await db.users.find(
+        {"nomor_hp": {"$exists": True, "$ne": ""}, "is_admin": False}, 
+        {"_id": 0, "id": 1, "nama": 1, "nomor_hp": 1, "nomor_rumah": 1, "telegram_chat_id": 1}
+    ).to_list(1000)
+    
+    # Count users with telegram_chat_id
+    users_with_telegram = await db.users.count_documents({
+        "nomor_hp": {"$exists": True, "$ne": ""}, 
+        "is_admin": False,
+        "telegram_chat_id": {"$exists": True, "$ne": ""}
+    })
+    
+    # Count users without telegram_chat_id
+    users_without_telegram = len(all_users) - users_with_telegram
+    
+    return {
+        "total_users": len(all_users),
+        "users_with_telegram": users_with_telegram,
+        "users_without_telegram": users_without_telegram,
+        "users": all_users,
+        "telegram_enabled_percentage": round((users_with_telegram / len(all_users) * 100) if all_users else 0, 2)
+    }
+
+@router.patch("/users/{user_id}/activate-telegram", response_model=MessageResponse)
+async def activate_user_telegram(
+    user_id: str = Path(..., description="ID pengguna"),
+    telegram_chat_id: str = Query(..., description="Telegram Chat ID"),
+    current_user = Depends(get_current_admin)
+):
+    """Aktifkan notifikasi Telegram untuk user (admin only)"""
+    db = get_database()
+    
+    # Cek apakah user ada
+    user = await db.users.find_one({"id": user_id})
+    if not user:
+        raise HTTPException(status_code=404, detail="User tidak ditemukan")
+    
+    # Update telegram_chat_id
+    result = await db.users.update_one(
+        {"id": user_id},
+        {"$set": {"telegram_chat_id": telegram_chat_id}}
+    )
+    
+    if result.modified_count > 0:
+        return {"message": f"Notifikasi Telegram berhasil diaktifkan untuk {user.get('nama', 'User')}"}
+    else:
+        return {"message": f"User {user.get('nama', 'User')} sudah memiliki telegram_chat_id"}
+
+@router.patch("/users/{user_id}/deactivate-telegram", response_model=MessageResponse)
+async def deactivate_user_telegram(
+    user_id: str = Path(..., description="ID pengguna"),
+    current_user = Depends(get_current_admin)
+):
+    """Nonaktifkan notifikasi Telegram untuk user (admin only)"""
+    db = get_database()
+    
+    # Cek apakah user ada
+    user = await db.users.find_one({"id": user_id})
+    if not user:
+        raise HTTPException(status_code=404, detail="User tidak ditemukan")
+    
+    # Hapus telegram_chat_id
+    result = await db.users.update_one(
+        {"id": user_id},
+        {"$unset": {"telegram_chat_id": ""}}
+    )
+    
+    if result.modified_count > 0:
+        return {"message": f"Notifikasi Telegram berhasil dinonaktifkan untuk {user.get('nama', 'User')}"}
+    else:
+        return {"message": f"User {user.get('nama', 'User')} tidak memiliki telegram_chat_id"}
 
 # Dashboard
 @router.get("/dashboard")
