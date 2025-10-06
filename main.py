@@ -72,6 +72,20 @@ logger = logging.getLogger(__name__)
 @app.on_event("startup")
 async def startup_event():
     await init_database()
+    
+    # Setup Telegram webhook if configured
+    try:
+        from app.config.telegram import TelegramConfig
+        if TelegramConfig.is_configured():
+            from setup_telegram_webhook import TelegramWebhookSetup
+            setup = TelegramWebhookSetup()
+            await setup.set_webhook()
+            logger.info("Telegram webhook configured successfully")
+        else:
+            logger.warning("Telegram not configured, skipping webhook setup")
+    except Exception as e:
+        logger.error(f"Failed to setup Telegram webhook: {e}")
+    
     logger.info("Application started successfully")
 
 @app.on_event("shutdown")

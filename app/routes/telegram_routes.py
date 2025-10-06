@@ -99,8 +99,8 @@ Notifikasi Telegram Anda telah diaktifkan untuk:
 💬 Chat ID: {chat_id}
 
 🔔 Anda akan menerima notifikasi tentang:
-• Pengumuman RT/RW
-• Reminder pembayaran iuran
+• Pengumuman IPL Cluster
+• Reminder pembayaran IPL Cluster
 • Informasi penting lainnya
 
 Terima kasih telah bergabung! 🎉
@@ -132,7 +132,7 @@ Terima kasih telah bergabung! 🎉
             
             welcome_message = f"""👋 Halo {full_name}!
 
-Selamat datang di Bot Notifikasi RT/RW Management!
+Selamat datang di Bot Notifikasi IPL Cluster Management!
 
 📱 **Untuk menerima notifikasi, silakan:**
 1. Kirim nomor HP Anda (contoh: 08123456789)
@@ -142,7 +142,7 @@ Selamat datang di Bot Notifikasi RT/RW Management!
 💬 **Chat ID Anda:** {chat_id}
 🔍 **Cara mencari nomor HP:**
 - Gunakan format: 08xxxxxxxxx
-- Pastikan nomor sudah terdaftar di sistem RT/RW
+- Pastikan nomor sudah terdaftar di sistem IPL Cluster
 
 ❓ **Bantuan:** Kirim /help untuk informasi lebih lanjut
 """
@@ -182,7 +182,7 @@ Notifikasi Telegram Anda telah diaktifkan untuk:
 🏠 Rumah: {user.get('nomor_rumah', 'N/A')}
 
 🔔 Anda akan menerima notifikasi tentang:
-• Pengumuman RT/RW
+• Pengumuman IPL Cluster
 • Reminder pembayaran iuran
 • Informasi penting lainnya
 
@@ -198,7 +198,7 @@ Terima kasih telah bergabung! 🎉
 Nomor HP {phone_number} tidak terdaftar di sistem.
 
 🔍 **Pastikan:**
-• Nomor HP sudah terdaftar di sistem RT/RW
+• Nomor HP sudah terdaftar di sistem IPL Cluster
 • Format nomor benar (contoh: 08123456789)
 • Hubungi admin jika masih bermasalah
 
@@ -226,11 +226,11 @@ async def send_help_message(chat_id: str):
 3. Tunggu konfirmasi dari sistem
 
 🔔 **Notifikasi yang akan diterima:**
-• Pengumuman RT/RW
+• Pengumuman IPL Cluster
 • Reminder pembayaran iuran
 • Informasi penting lainnya
 
-❓ **Masalah?** Hubungi admin RT/RW
+❓ **Masalah?** Hubungi admin IPL Cluster
 """
     
     await telegram_service._send_to_chat_id(chat_id, help_message)
