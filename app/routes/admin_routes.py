@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, Query, HTTPException
 from fastapi.responses import Response
 from fastapi.responses import StreamingResponse
 from app.models import (
-    UserResponse, FeeResponse, PaymentResponse, MessageResponse, 
+    UserResponse, FeeResponse, PaymentResponse, PaymentWithDetails, MessageResponse, 
     GenerateFeesRequest, NotificationResponse, UserUpdate, PasswordUpdate, UserCreate, ResetPasswordRequest
 )
 from app.controllers.user_controller import UserController
@@ -121,6 +121,11 @@ async def regenerate_fees_for_month(request: GenerateFeesRequest, current_user =
 async def get_all_payments(current_user = Depends(get_current_admin)):
     """Get all payments (admin only)"""
     return await payment_controller.get_all_payments()
+
+@router.get("/payments/with-details", response_model=List[PaymentWithDetails])
+async def get_all_payments_with_details(current_user = Depends(get_current_admin)):
+    """Get all payments with user and fee details (admin only)"""
+    return await payment_controller.get_all_payments_with_details()
 
 # Notification Management
 @router.post("/notifications/broadcast", response_model=MessageResponse)

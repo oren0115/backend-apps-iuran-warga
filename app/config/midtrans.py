@@ -11,11 +11,11 @@ class MidtransConfig:
     def __init__(self):
         server_key = os.environ.get("MIDTRANS_SERVER_KEY")
         client_key = os.environ.get("MIDTRANS_CLIENT_KEY")
-        self.is_production = os.environ.get("MIDTRANS_IS_PRODUCTION", "false").lower() == "true"
+        self.is_production = os.environ.get("MIDTRANS_IS_PRODUCTION").lower() == "true"
         
         # Frontend domain configuration
-        self.frontend_domain = os.environ.get("FRONTEND_DOMAIN", "http://localhost:5173")
-        self.backend_domain = os.environ.get("BACKEND_DOMAIN", "http://localhost:8000/api")
+        self.frontend_domain = os.environ.get("FRONTEND_DOMAIN", "")
+        self.backend_domain = os.environ.get("BACKEND_DOMAIN", "")
         
         if not server_key or not client_key:
             raise ValueError("MIDTRANS_SERVER_KEY and MIDTRANS_CLIENT_KEY must be set in environment variables")

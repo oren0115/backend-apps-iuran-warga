@@ -130,9 +130,9 @@ class PaymentController:
 
             payment_with_details = PaymentWithDetails(**payment)
             if user:
-                payment_with_details.user = UserResponse(**user)
+                payment_with_details.user = user
             if fee:
-                payment_with_details.fee = FeeResponse(**fee)
+                payment_with_details.fee = fee
 
             result.append(payment_with_details)
 
@@ -156,6 +156,38 @@ class PaymentController:
             processed_payments.append(PaymentResponse(**payment))
         
         return processed_payments
+
+    async def get_all_payments_with_details(self) -> list[PaymentWithDetails]:
+        """Get all payments with user and fee details (admin only)"""
+        db = get_database()
+        payments = await db.payments.find({}, {"_id": 0}).to_list(1000)
+        
+        result = []
+        for payment in payments:
+            if 'method' in payment and 'payment_method' not in payment:
+                payment['payment_method'] = payment.pop('method')
+            
+            # Process status
+            midtrans_status = (payment.get('midtrans_status') or '').lower()
+            status_value = payment.get('status')
+            if status_value is None:
+                status_value = 'Pending'
+            if midtrans_status in ['settlement', 'capture'] and str(status_value).lower() == 'pending':
+                payment['status'] = 'Success'
+            
+            # Get user and fee details
+            user = await db.users.find_one({"id": payment["user_id"]}, {"_id": 0, "password": 0})
+            fee = await db.fees.find_one({"id": payment["fee_id"]}, {"_id": 0})
+
+            payment_with_details = PaymentWithDetails(**payment)
+            if user:
+                payment_with_details.user = user
+            if fee:
+                payment_with_details.fee = fee
+
+            result.append(payment_with_details)
+        
+        return result
 
     async def get_payments_by_date_range(self, start: datetime, end: datetime) -> list[PaymentResponse]:
         """Get payments filtered by created_at date range for export"""

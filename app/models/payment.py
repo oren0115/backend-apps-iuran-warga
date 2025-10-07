@@ -82,6 +82,6 @@ class PaymentResponse(PaymentBase):
 
 
 class PaymentWithDetails(PaymentResponse):
-    user: Optional['UserResponse'] = None
-    fee: Optional['FeeResponse'] = None
+    user: Optional[dict] = None
+    fee: Optional[dict] = None
 
