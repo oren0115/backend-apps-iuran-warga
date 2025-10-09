@@ -9,7 +9,9 @@ from app.routes import user_routes, fee_routes, payment_routes, notification_rou
 import logging
 
 # Create the main app
-app = FastAPI(title="RT/RW Fee Management API")
+app = FastAPI(title="IPL Cluster Cannary Management API")
+
+
 
 # Initialize rate limiter
 limiter = Limiter(key_func=get_remote_address)
@@ -36,6 +38,14 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["Content-Type", "Authorization", "X-Requested-With"],
 )
+
+# Add HSTS middleware
+@app.middleware("http")
+async def add_hsts_header(request, call_next):
+    response = await call_next(request)
+    response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    return response
+
 
 # Include routers
 app.include_router(user_routes.router, prefix="/api", tags=["users"])
