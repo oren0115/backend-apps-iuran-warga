@@ -242,6 +242,14 @@ async def get_dashboard_stats(current_user = Depends(get_current_admin)):
     """Get dashboard statistics (admin only)"""
     return await admin_controller.get_dashboard_stats()
 
+@router.get("/unpaid-users")
+async def get_unpaid_users(
+    bulan: str = Query(None, description="Bulan dalam format YYYY-MM (contoh: 2024-01)"),
+    current_user = Depends(get_current_admin)
+):
+    """Get users who haven't paid their fees (admin only)"""
+    return await admin_controller.get_unpaid_users(bulan)
+
 # Sample Data
 @router.post("/init-sample-data", response_model=MessageResponse)
 async def init_sample_data():

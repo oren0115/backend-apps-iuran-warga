@@ -74,5 +74,61 @@ class AdminController:
             "approvedPayments": approved_payments,
             "currentMonthCollection": current_month_collection,
             "collectionRate": collection_rate,
-            "monthlyFees": monthly_fees
+            "monthlyFees": monthly_fees,
+            "unpaidFees": unpaid_fees
         }
+
+    async def get_unpaid_users(self, bulan: str = None) -> list[dict]:
+        """Get users who haven't paid their fees (admin only)"""
+        db = get_database()
+        
+        # Get current month if not specified
+        if bulan is None:
+            jakarta_tz = timezone(timedelta(hours=7))
+            current_time = datetime.now(jakarta_tz)
+            bulan = current_time.strftime("%Y-%m")
+        
+        # Get all unpaid fees for specified month
+        unpaid_fees = await db.fees.find({
+            "status": "Belum Bayar",
+            "bulan": bulan
+        }).to_list(1000)
+        
+        # Get user details for each unpaid fee
+        unpaid_users = []
+        for fee in unpaid_fees:
+            user = await db.users.find_one({"id": fee["user_id"]}, {"_id": 0})
+            if user:
+                # User exists - normal case
+                unpaid_users.append({
+                    "user_id": user["id"],
+                    "username": user["username"],
+                    "nama": user["nama"],
+                    "nomor_rumah": user.get("nomor_rumah", ""),
+                    "nomor_hp": user.get("nomor_hp", ""),
+                    "tipe_rumah": user.get("tipe_rumah", ""),
+                    "fee_id": fee["id"],
+                    "kategori": fee["kategori"],
+                    "nominal": fee["nominal"],
+                    "due_date": fee["due_date"],
+                    "created_at": fee["created_at"],
+                    "is_orphaned": False
+                })
+            else:
+                # User deleted but fee exists - orphaned fee
+                unpaid_users.append({
+                    "user_id": fee["user_id"],
+                    "username": "USER DIHAPUS",
+                    "nama": "User Sudah Dihapus",
+                    "nomor_rumah": "N/A",
+                    "nomor_hp": "N/A",
+                    "tipe_rumah": "N/A",
+                    "fee_id": fee["id"],
+                    "kategori": fee["kategori"],
+                    "nominal": fee["nominal"],
+                    "due_date": fee["due_date"],
+                    "created_at": fee["created_at"],
+                    "is_orphaned": True
+                })
+        
+        return unpaid_users

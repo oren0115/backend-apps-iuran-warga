@@ -24,13 +24,11 @@ app.add_middleware(
 
 # Add CORS middleware
 # NOTE: When allow_credentials=True, you cannot use wildcard "*" for allow_origins.
-# Explicitly list the frontend origins (Vite defaults to 5173).
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
     allow_origins=[
         "http://localhost:5173",
-        "http://127.0.0.1:5173",
         "https://iuran-warga-phi.vercel.app",
         "https://backend-apps-iuran-warga.onrender.com",
         "https://*.ngrok-free.app",
@@ -74,17 +72,17 @@ async def startup_event():
     await init_database()
     
     # Setup Telegram webhook if configured
-    try:
-        from app.config.telegram import TelegramConfig
-        if TelegramConfig.is_configured():
-            from setup_telegram_webhook import TelegramWebhookSetup
-            setup = TelegramWebhookSetup()
-            await setup.set_webhook()
-            logger.info("Telegram webhook configured successfully")
-        else:
-            logger.warning("Telegram not configured, skipping webhook setup")
-    except Exception as e:
-        logger.error(f"Failed to setup Telegram webhook: {e}")
+    # try:
+    #     from app.config.telegram import TelegramConfig
+    #     if TelegramConfig.is_configured():
+    #         from setup_telegram_webhook import TelegramWebhookSetup
+    #         setup = TelegramWebhookSetup()
+    #         await setup.set_webhook()
+    #         logger.info("Telegram webhook configured successfully")
+    #     else:
+    #         logger.warning("Telegram not configured, skipping webhook setup")
+    # except Exception as e:
+    #     logger.error(f"Failed to setup Telegram webhook: {e}")
     
     logger.info("Application started successfully")
 
