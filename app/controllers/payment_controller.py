@@ -6,6 +6,8 @@ from app.models import (
 )
 from app.config.database import get_database
 from app.services.midtrans_service import MidtransService
+from app.services.websocket_manager import websocket_manager
+from app.controllers.admin_controller import AdminController
 from datetime import datetime, timezone, timedelta
 import uuid
 import logging
@@ -16,6 +18,7 @@ logger = logging.getLogger(__name__)
 class PaymentController:
     def __init__(self):
         self.midtrans_service = MidtransService()
+        self.admin_controller = AdminController()
 
     def generate_order_id(self, user_id: str, fee_id: str) -> str:
         """
@@ -28,6 +31,22 @@ class PaymentController:
         order_id = f"{short_user_id}-{short_fee_id}-{unique_part}"
 
         return order_id[:50]
+
+    async def broadcast_dashboard_update(self):
+        """Broadcast dashboard stats update to all connected admin users"""
+        try:
+            # Get updated dashboard stats
+            dashboard_stats = await self.admin_controller.get_dashboard_stats()
+            
+            # Broadcast to all connected users
+            await websocket_manager.broadcast_to_all({
+                "type": "dashboard_update",
+                "data": dashboard_stats
+            })
+            
+            logger.info("Dashboard update broadcasted to all connected users")
+        except Exception as e:
+            logger.error(f"Failed to broadcast dashboard update: {e}")
 
     async def create_payment(self, payment_data: PaymentCreate, user_id: str, user_data: dict) -> PaymentCreateResponse:
         """Create a new payment using Midtrans"""
@@ -108,6 +127,9 @@ class PaymentController:
                             )
                         await db.payments.update_one({"id": payment["id"]}, {"$set": update_data})
                         payment.update(update_data)
+                        
+                        # Broadcast dashboard update after status change
+                        await self.broadcast_dashboard_update()
                 except Exception:
                     # If Midtrans check fails, keep current status without breaking the list
                     pass
@@ -213,7 +235,12 @@ class PaymentController:
     async def handle_midtrans_notification(self, notification: MidtransNotificationRequest) -> dict:
         """Handle Midtrans payment notification"""
         # Teruskan model langsung ke service
-        return await self.midtrans_service.handle_notification(notification)
+        result = await self.midtrans_service.handle_notification(notification)
+        
+        # Broadcast dashboard update after payment status change
+        await self.broadcast_dashboard_update()
+        
+        return result
 
     async def check_payment_status(self, transaction_id: str) -> dict:
         """Check payment status from Midtrans"""
@@ -262,6 +289,9 @@ class PaymentController:
                     )
                     
                     payment.update(update_data)
+                    
+                    # Broadcast dashboard update after status change
+                    await self.broadcast_dashboard_update()
                     
             except Exception:
                 pass
@@ -319,6 +349,9 @@ class PaymentController:
                     {"id": payment_id},
                     {"$set": update_data}
                 )
+                
+                # Broadcast dashboard update after status change
+                await self.broadcast_dashboard_update()
                 
                 return {
                     "payment_id": payment_id,

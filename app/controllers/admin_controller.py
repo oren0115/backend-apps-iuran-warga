@@ -1,12 +1,27 @@
 from app.models import UserResponse
 from app.utils.auth import AuthManager
 from app.config.database import get_database
+from app.services.websocket_manager import websocket_manager
 from datetime import datetime, timedelta, timezone
 import uuid
 
 class AdminController:
     def __init__(self):
         self.auth_manager = AuthManager()
+
+    async def broadcast_dashboard_update(self):
+        """Broadcast dashboard stats update to all connected admin users"""
+        try:
+            # Get updated dashboard stats
+            dashboard_stats = await self.get_dashboard_stats()
+            
+            # Broadcast to all connected users
+            await websocket_manager.broadcast_to_all({
+                "type": "dashboard_update",
+                "data": dashboard_stats
+            })
+        except Exception as e:
+            print(f"Failed to broadcast dashboard update: {e}")
 
     async def init_sample_data(self) -> dict:
         """Initialize sample data for testing"""
