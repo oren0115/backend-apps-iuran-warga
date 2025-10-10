@@ -33,7 +33,6 @@ app.add_middleware(
         "http://localhost:5173",
         "https://iuran-warga-phi.vercel.app",
         "https://backend-apps-iuran-warga.onrender.com",
-        https://backend-apps-iuran-warga.vercel.app,
         "https://*.ngrok-free.app",
         "https://backend-apps-iuran-warga.vercel.app",
     ],
