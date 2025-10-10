@@ -250,6 +250,7 @@ async def get_unpaid_users(
     """Get users who haven't paid their fees (admin only)"""
     return await admin_controller.get_unpaid_users(bulan)
 
+
 @router.get("/paid-users")
 async def get_paid_users(
     bulan: str = Query(None, description="Bulan dalam format YYYY-MM (contoh: 2024-01)"),

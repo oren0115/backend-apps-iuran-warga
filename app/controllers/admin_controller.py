@@ -131,7 +131,7 @@ class AdminController:
                     "$or": [
                         {"status": "Belum Bayar"},
                         {
-                            "status": {"$in": ["Belum Bayar", "Pending"]},
+                            "status": "Pending",
                             "payments.status": {"$in": ["Deny", "Cancel", "Expire"]}
                         }
                     ]
