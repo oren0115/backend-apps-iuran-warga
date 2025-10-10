@@ -250,6 +250,14 @@ async def get_unpaid_users(
     """Get users who haven't paid their fees (admin only)"""
     return await admin_controller.get_unpaid_users(bulan)
 
+@router.get("/paid-users")
+async def get_paid_users(
+    bulan: str = Query(None, description="Bulan dalam format YYYY-MM (contoh: 2024-01)"),
+    current_user = Depends(get_current_admin)
+):
+    """Get users who have paid their fees (admin only)"""
+    return await admin_controller.get_paid_users(bulan)
+
 # Sample Data
 @router.post("/init-sample-data", response_model=MessageResponse)
 async def init_sample_data():

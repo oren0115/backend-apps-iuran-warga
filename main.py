@@ -34,6 +34,7 @@ app.add_middleware(
         "https://iuran-warga-phi.vercel.app",
         "https://backend-apps-iuran-warga.onrender.com",
         "https://*.ngrok-free.app",
+        "https://backend-apps-iuran-warga.vercel.app",
     ],
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["Content-Type", "Authorization", "X-Requested-With"],

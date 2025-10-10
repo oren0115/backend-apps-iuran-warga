@@ -29,7 +29,34 @@ class AdminController:
         total_fees = await db.fees.count_documents({})
         paid_fees = await db.fees.count_documents({"status": "Lunas"})
         pending_fees = await db.fees.count_documents({"status": "Pending"})
+        
+        # Count unpaid fees: includes "Belum Bayar" and fees with failed payments
         unpaid_fees = await db.fees.count_documents({"status": "Belum Bayar"})
+        
+        # Also count fees that have failed payments (Deny, Cancel, Expire)
+        failed_payment_fees = await db.fees.aggregate([
+            {
+                "$lookup": {
+                    "from": "payments",
+                    "localField": "id",
+                    "foreignField": "fee_id",
+                    "as": "payments"
+                }
+            },
+            {
+                "$match": {
+                    "status": {"$in": ["Belum Bayar", "Pending"]},
+                    "payments.status": {"$in": ["Deny", "Cancel", "Expire"]}
+                }
+            },
+            {
+                "$count": "count"
+            }
+        ]).to_list(1)
+        
+        # Add failed payment fees to unpaid count
+        if failed_payment_fees:
+            unpaid_fees += failed_payment_fees[0].get("count", 0)
         
         # Count payments by status - using correct status values
         pending_payments = await db.payments.count_documents({"status": "Pending"})
@@ -88,16 +115,41 @@ class AdminController:
             current_time = datetime.now(jakarta_tz)
             bulan = current_time.strftime("%Y-%m")
         
-        # Get all unpaid fees for specified month
-        unpaid_fees = await db.fees.find({
-            "status": "Belum Bayar",
-            "bulan": bulan
-        }).to_list(1000)
+        # Get all unpaid fees for specified month (including failed payments)
+        unpaid_fees = await db.fees.aggregate([
+            {
+                "$lookup": {
+                    "from": "payments",
+                    "localField": "id",
+                    "foreignField": "fee_id",
+                    "as": "payments"
+                }
+            },
+            {
+                "$match": {
+                    "bulan": bulan,
+                    "$or": [
+                        {"status": "Belum Bayar"},
+                        {
+                            "status": {"$in": ["Belum Bayar", "Pending"]},
+                            "payments.status": {"$in": ["Deny", "Cancel", "Expire"]}
+                        }
+                    ]
+                }
+            }
+        ]).to_list(1000)
         
         # Get user details for each unpaid fee
         unpaid_users = []
         for fee in unpaid_fees:
             user = await db.users.find_one({"id": fee["user_id"]}, {"_id": 0})
+            
+            # Get latest payment status for this fee
+            latest_payment = None
+            if fee.get("payments"):
+                # Sort by created_at descending to get the latest payment
+                latest_payment = sorted(fee["payments"], key=lambda x: x.get("created_at", ""), reverse=True)[0]
+            
             if user:
                 # User exists - normal case
                 unpaid_users.append({
@@ -112,7 +164,9 @@ class AdminController:
                     "nominal": fee["nominal"],
                     "due_date": fee["due_date"],
                     "created_at": fee["created_at"],
-                    "is_orphaned": False
+                    "is_orphaned": False,
+                    "payment_status": latest_payment.get("status") if latest_payment else None,
+                    "payment_failed": latest_payment.get("status") in ["Deny", "Cancel", "Expire"] if latest_payment else False
                 })
             else:
                 # User deleted but fee exists - orphaned fee
@@ -128,7 +182,73 @@ class AdminController:
                     "nominal": fee["nominal"],
                     "due_date": fee["due_date"],
                     "created_at": fee["created_at"],
-                    "is_orphaned": True
+                    "is_orphaned": True,
+                    "payment_status": latest_payment.get("status") if latest_payment else None,
+                    "payment_failed": latest_payment.get("status") in ["Deny", "Cancel", "Expire"] if latest_payment else False
                 })
         
         return unpaid_users
+
+    async def get_paid_users(self, bulan: str = None) -> list[dict]:
+        """Get users who have paid their fees (admin only)"""
+        db = get_database()
+        
+        # Get current month if not specified
+        if bulan is None:
+            jakarta_tz = timezone(timedelta(hours=7))
+            current_time = datetime.now(jakarta_tz)
+            bulan = current_time.strftime("%Y-%m")
+        
+        # Get all paid fees for specified month
+        paid_fees = await db.fees.find({
+            "status": "Lunas",
+            "bulan": bulan
+        }).to_list(1000)
+        
+        # Get user details for each paid fee
+        paid_users = []
+        for fee in paid_fees:
+            user = await db.users.find_one({"id": fee["user_id"]}, {"_id": 0})
+            if user:
+                # Get payment details for this fee
+                payment = await db.payments.find_one(
+                    {"fee_id": fee["id"], "status": {"$in": ["Settlement", "Success"]}},
+                    {"_id": 0}
+                )
+                
+                paid_users.append({
+                    "user_id": user["id"],
+                    "username": user["username"],
+                    "nama": user["nama"],
+                    "nomor_rumah": user.get("nomor_rumah", ""),
+                    "nomor_hp": user.get("nomor_hp", ""),
+                    "tipe_rumah": user.get("tipe_rumah", ""),
+                    "fee_id": fee["id"],
+                    "kategori": fee["kategori"],
+                    "nominal": fee["nominal"],
+                    "due_date": fee["due_date"],
+                    "created_at": fee["created_at"],
+                    "payment_date": payment.get("settled_at", payment.get("created_at", "")) if payment else "",
+                    "payment_method": payment.get("payment_method", "") if payment else "",
+                    "is_orphaned": False
+                })
+            else:
+                # User deleted but fee exists - orphaned fee
+                paid_users.append({
+                    "user_id": fee["user_id"],
+                    "username": "USER DIHAPUS",
+                    "nama": "User Sudah Dihapus",
+                    "nomor_rumah": "N/A",
+                    "nomor_hp": "N/A",
+                    "tipe_rumah": "N/A",
+                    "fee_id": fee["id"],
+                    "kategori": fee["kategori"],
+                    "nominal": fee["nominal"],
+                    "due_date": fee["due_date"],
+                    "created_at": fee["created_at"],
+                    "payment_date": "",
+                    "payment_method": "",
+                    "is_orphaned": True
+                })
+        
+        return paid_users
