@@ -20,6 +20,7 @@ from app.models.fee import (
     FeeBase,
     Fee,
     FeeResponse,
+    FeeRegenerationAudit,
 )
 
 # Payment models
@@ -66,6 +67,7 @@ __all__ = [
     "FeeBase",
     "Fee",
     "FeeResponse",
+    "FeeRegenerationAudit",
     # Payment models
     "PaymentBase",
     "PaymentCreate",

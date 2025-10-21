@@ -1,5 +1,5 @@
 from app.models import UserResponse
-from app.utils.auth import AuthManager
+from app.security.auth import AuthManager
 from app.config.database import get_database
 from app.services.websocket_manager import websocket_manager
 from datetime import datetime, timedelta, timezone

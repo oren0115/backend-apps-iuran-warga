@@ -1,6 +1,6 @@
 from fastapi import HTTPException, status
 from app.models import User, UserCreate, UserLogin, UserResponse, LoginResponse, UserUpdate, PasswordUpdate
-from app.utils.auth import AuthManager
+from app.security.auth import AuthManager
 from app.config.database import get_database
 import uuid
 from datetime import datetime, timezone, timedelta

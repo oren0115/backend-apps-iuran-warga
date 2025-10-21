@@ -11,7 +11,7 @@ from app.controllers.payment_controller import PaymentController
 from app.controllers.notification_controller import NotificationController
 from app.controllers.admin_controller import AdminController
 from app.services.telegram_service import telegram_service
-from app.utils.auth import get_current_admin
+from app.security.auth import get_current_admin
 from app.config.database import get_database
 from fastapi import Path
 from typing import List
@@ -39,8 +39,8 @@ async def get_all_users(current_user = Depends(get_current_admin)):
 
 @router.put("/users/{user_id}", response_model=UserResponse)
 async def update_user_profile_admin(
+    updates: UserUpdate,
     user_id: str = Path(..., description="ID pengguna"),
-    updates: UserUpdate = None,
     current_user = Depends(get_current_admin)
 ):
     """Update user profile by id (admin only)"""
@@ -48,8 +48,8 @@ async def update_user_profile_admin(
 
 @router.put("/users/{user_id}/password", response_model=MessageResponse)
 async def update_user_password_admin(
+    payload: PasswordUpdate,
     user_id: str = Path(..., description="ID pengguna"),
-    payload: PasswordUpdate = None,
     current_user = Depends(get_current_admin)
 ):
     """Update user password by id (admin only)"""
@@ -81,8 +81,8 @@ async def demote_user_from_admin(
 
 @router.patch("/users/{user_id}/reset-password", response_model=MessageResponse)
 async def reset_user_password_admin(
+    request: ResetPasswordRequest,
     user_id: str = Path(..., description="ID pengguna"),
-    request: ResetPasswordRequest = None,
     current_user = Depends(get_current_admin)
 ):
     """Reset user password by id (admin only)"""
@@ -108,13 +108,28 @@ async def get_all_fees(current_user = Depends(get_current_admin)):
 
 @router.post("/regenerate-fees", response_model=MessageResponse)
 async def regenerate_fees_for_month(request: GenerateFeesRequest, current_user = Depends(get_current_admin)):
-    """Regenerate fees for a specific month based on current user house types (admin only)"""
+    """Regenerate fees for a specific month - PRESERVE PAYMENT HISTORY (admin only)"""
     tarif_config = {
         "60M2": request.tarif_60m2,
         "72M2": request.tarif_72m2,
         "HOOK": request.tarif_hook,
     }
-    return await fee_controller.regenerate_fees_for_month(request.bulan, tarif_config)
+    return await fee_controller.regenerate_fees_for_month(request.bulan, tarif_config, current_user.get("username", "admin"))
+
+@router.get("/fees/regeneration-history/{bulan}")
+async def get_regeneration_history(bulan: str, current_user = Depends(get_current_admin)):
+    """Get regeneration history for a specific month (admin only)"""
+    return await fee_controller.get_regeneration_history(bulan)
+
+@router.get("/fees/versions/{fee_id}")
+async def get_fee_versions(fee_id: str, current_user = Depends(get_current_admin)):
+    """Get all versions of a specific fee (admin only)"""
+    return await fee_controller.get_fee_versions(fee_id)
+
+@router.post("/fees/rollback/{bulan}")
+async def rollback_regeneration(bulan: str, current_user = Depends(get_current_admin)):
+    """Rollback last regeneration for a month (admin only)"""
+    return await fee_controller.rollback_regeneration(bulan, current_user.get("username", "admin"))
 
 # Payment Management
 @router.get("/payments", response_model=List[PaymentResponse])

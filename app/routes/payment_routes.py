@@ -7,8 +7,8 @@ from app.models import (
     MidtransNotificationRequest,
 )
 from app.controllers.payment_controller import PaymentController
-from app.utils.auth import get_current_user
-from app.utils.webhook_security import validate_webhook_request
+from app.security.auth import get_current_user
+from app.security.webhook_security import validate_webhook_request
 
 router = APIRouter()
 payment_controller = PaymentController()

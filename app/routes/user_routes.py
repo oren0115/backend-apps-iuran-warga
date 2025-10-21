@@ -3,7 +3,7 @@ from slowapi import Limiter
 from slowapi.util import get_remote_address
 from app.models import UserCreate, UserLogin, UserResponse, LoginResponse, MessageResponse, UserUpdate
 from app.controllers.user_controller import UserController
-from app.utils.auth import get_current_user, get_current_admin
+from app.security.auth import get_current_user, get_current_admin
 
 router = APIRouter()
 user_controller = UserController()
@@ -18,7 +18,7 @@ async def register(user_data: UserCreate, current_user = Depends(get_current_adm
 
 @router.post("/login", response_model=LoginResponse)
 @limiter.limit("5/minute")
-async def login(request: Request, login_data: UserLogin):
+async def login(login_data: UserLogin, request: Request):
     """Login user and return access token"""
     return await user_controller.login_user(login_data)
 
