@@ -92,6 +92,13 @@ class UserController:
         """Update a user's profile by id (admin only)"""
         db = get_database()
         update_dict = {k: v for k, v in updates.dict().items() if v is not None}
+        
+        # Handle password separately if provided
+        if "password" in update_dict:
+            password = update_dict.pop("password")
+            if password:  # Only hash if password is not empty
+                update_dict["password"] = self.auth_manager.hash_password(password)
+        
         if not update_dict:
             user = await db.users.find_one({"id": user_id})
             if not user:

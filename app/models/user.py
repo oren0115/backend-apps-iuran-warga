@@ -29,6 +29,7 @@ class UserUpdate(BaseModel):
     tipe_rumah: Optional[str] = None
     is_admin: Optional[bool] = None
     telegram_chat_id: Optional[str] = None
+    password: Optional[str] = None
 
 
 class PasswordUpdate(BaseModel):

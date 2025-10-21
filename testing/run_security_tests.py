@@ -127,28 +127,28 @@ class SecurityTestRunner:
         
         # Print summary
         print("\n" + "="*80)
-        print("📈 SUMMARY")
+        print("SUMMARY")
         print("="*80)
         print(f"Total Tests Run: {summary.total_tests}")
-        print(f"✅ Passed: {summary.passed} ({summary.passed/summary.total_tests*100:.1f}%)")
-        print(f"❌ Failed: {summary.failed} ({summary.failed/summary.total_tests*100:.1f}%)")
-        print(f"🚨 Critical Issues: {summary.critical_failures}")
-        print(f"⚠️  Warnings: {summary.warnings}")
-        print(f"⏰ Completed at: {summary.timestamp}")
+        print(f"Passed: {summary.passed} ({summary.passed/summary.total_tests*100:.1f}%)")
+        print(f"Failed: {summary.failed} ({summary.failed/summary.total_tests*100:.1f}%)")
+        print(f"Critical Issues: {summary.critical_failures}")
+        print(f"Warnings: {summary.warnings}")
+        print(f"Completed at: {summary.timestamp}")
         print("="*80)
         
         # Final verdict
         print()
         if summary.critical_failures > 0:
-            print("🚫 PRODUCTION DEPLOYMENT: NOT READY")
+            print("PRODUCTION DEPLOYMENT: NOT READY")
             print("   Fix all CRITICAL issues before deploying to production!")
             return False
         elif summary.warnings > 0:
-            print("⚠️  PRODUCTION DEPLOYMENT: READY WITH WARNINGS")
+            print("PRODUCTION DEPLOYMENT: READY WITH WARNINGS")
             print("   Consider fixing warnings for better security posture.")
             return True
         else:
-            print("✅ PRODUCTION DEPLOYMENT: READY")
+            print("PRODUCTION DEPLOYMENT: READY")
             print("   All security tests passed!")
             return True
 
