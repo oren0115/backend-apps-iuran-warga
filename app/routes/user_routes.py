@@ -31,8 +31,3 @@ async def get_profile(current_user = Depends(get_current_user)):
 async def update_profile(data: UserUpdate, current_user = Depends(get_current_admin)):
     """Update current user profile (admin only)"""
     return await user_controller.update_user_profile(current_user, data)
-
-@router.put("/toggle-admin", response_model=MessageResponse)
-async def toggle_admin(current_user = Depends(get_current_admin)):
-    """Toggle user admin status (admin only, for testing purposes)"""
-    return await user_controller.toggle_admin_status(current_user)

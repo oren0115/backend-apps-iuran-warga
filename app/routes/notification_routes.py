@@ -16,8 +16,3 @@ async def get_notifications(current_user = Depends(get_current_user)):
 async def mark_notification_read(notification_id: str, current_user = Depends(get_current_user)):
     """Mark a notification as read"""
     return await notification_controller.mark_notification_as_read(notification_id, current_user["id"])
-
-@router.delete("/notifications/{notification_id}", response_model=MessageResponse)
-async def delete_notification(notification_id: str, current_user = Depends(get_current_user)):
-    """Delete a notification"""
-    return await notification_controller.delete_notification(notification_id, current_user["id"])

@@ -27,10 +27,3 @@ async def websocket_endpoint(websocket: WebSocket, user_id: str, token: str = Qu
         logger.error(f"WebSocket error for user {user_id}: {e}")
         websocket_manager.disconnect(websocket)
 
-@router.get("/ws/status")
-async def websocket_status():
-    """Get WebSocket connection status"""
-    return {
-        "connected_users": websocket_manager.get_connected_users(),
-        "total_connections": websocket_manager.get_connection_count()
-    }

@@ -68,12 +68,6 @@ async def handle_midtrans_notification(request: Request):
         return {"status": "error", "message": str(e)}
 
 
-@router.get("/payments/status/{transaction_id}")
-async def check_payment_status(transaction_id: str, current_user=Depends(get_current_user)):
-    """Check payment status from Midtrans"""
-    return await payment_controller.check_payment_status(transaction_id)
-
-
 @router.get("/payments/check/{payment_id}")
 async def check_payment_by_id(payment_id: str, current_user=Depends(get_current_user)):
     """Check payment status by payment ID"""
