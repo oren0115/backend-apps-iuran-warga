@@ -102,6 +102,7 @@ backend/
 
 ### Fee Endpoints
 - `GET /api/fees` - Get iuran user (hanya versi terbaru)
+- `GET /api/fees/all` - Get semua iuran user (termasuk regenerated)
 
 ### Payment Endpoints
 - `GET /api/payments` - Get riwayat pembayaran user (protected)

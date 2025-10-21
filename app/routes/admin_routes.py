@@ -46,6 +46,15 @@ async def update_user_profile_admin(
     """Update user profile by id (admin only)"""
     return await user_controller.update_user_by_id(user_id, updates)
 
+@router.put("/users/{user_id}/password", response_model=MessageResponse)
+async def update_user_password_admin(
+    payload: PasswordUpdate,
+    user_id: str = Path(..., description="ID pengguna"),
+    current_user = Depends(get_current_admin)
+):
+    """Update user password by id (admin only)"""
+    return await user_controller.update_user_password_by_id(user_id, payload)
+
 @router.delete("/users/{user_id}", response_model=MessageResponse)
 async def delete_user_admin(
     user_id: str = Path(..., description="ID pengguna"),

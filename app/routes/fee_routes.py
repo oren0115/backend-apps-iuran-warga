@@ -11,3 +11,8 @@ fee_controller = FeeController()
 async def get_user_fees(current_user = Depends(get_current_user)):
     """Get all fees for the current user - only latest versions (not regenerated)"""
     return await fee_controller.get_user_latest_fees(current_user["id"])
+
+@router.get("/fees/all", response_model=List[FeeResponse])
+async def get_user_all_fees(current_user = Depends(get_current_user)):
+    """Get all fees for the current user including regenerated ones (for admin/debug purposes)"""
+    return await fee_controller.get_user_fees(current_user["id"])
