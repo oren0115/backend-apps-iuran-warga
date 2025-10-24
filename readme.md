@@ -26,23 +26,27 @@ Sistem manajemen IPL berbasis FastAPI untuk mengelola pembayaran iuran bulanan w
 ## 📦 Instalasi
 
 1. **Clone repository**
+
    ```bash
    git clone <repository-url>
    cd backend
    ```
 
 2. **Install dependencies**
+
    ```bash
    pip install -r requirements.txt
    ```
 
 3. **Setup environment variables**
    Buat file `.env` di root directory:
+
    ```env
    MONGO_URL=mongodb://localhost:27017
    DB_NAME=rt_rw_management
    JWT_SECRET_KEY=your-secret-key-here
    JWT_ALGORITHM=HS256
+   PAYMENT_EXPIRY_MINUTES=30
    MIDTRANS_SERVER_KEY=your-midtrans-server-key
    MIDTRANS_CLIENT_KEY=your-midtrans-client-key
    MIDTRANS_IS_PRODUCTION=false
@@ -83,11 +87,13 @@ backend/
 ## 🔐 API Endpoints
 
 ### User Endpoints
+
 - `POST /api/register` - Registrasi user baru
 - `POST /api/login` - Login user
 - `GET /api/profile` - Get profil user (protected)
 
 ### Admin Endpoints
+
 - `GET /api/admin/users` - Get semua users (admin only)
 - `POST /api/admin/users` - Buat user baru (admin only)
 - `PUT /api/admin/users/{user_id}` - Update user (admin only)
@@ -101,15 +107,18 @@ backend/
 - `GET /api/admin/dashboard` - Get dashboard stats (admin only)
 
 ### Fee Endpoints
+
 - `GET /api/fees` - Get iuran user (hanya versi terbaru)
 - `GET /api/fees/all` - Get semua iuran user (termasuk regenerated)
 
 ### Payment Endpoints
+
 - `GET /api/payments` - Get riwayat pembayaran user (protected)
 - `POST /api/payments/create` - Buat pembayaran via Midtrans (protected)
 - `POST /api/payments/notification` - Webhook Midtrans untuk update status
 
 ### Notification Endpoints
+
 - `GET /api/notifications` - Get notifikasi user (protected)
 - `PUT /api/notifications/{id}/read` - Mark notifikasi sebagai dibaca (protected)
 
@@ -118,6 +127,7 @@ backend/
 ### Collections
 
 **users**
+
 ```json
 {
   "id": "string",
@@ -135,6 +145,7 @@ backend/
 ```
 
 **fees**
+
 ```json
 {
   "id": "string",
@@ -154,6 +165,7 @@ backend/
 ```
 
 **payments**
+
 ```json
 {
   "id": "string",
@@ -173,22 +185,26 @@ backend/
 ## 🆕 Fitur Terbaru
 
 ### 1. Smart Fee Regeneration
+
 - **Preserve Payment History**: Tagihan yang sudah dibayar tidak hilang saat regenerate
 - **Version Control**: Track perubahan tagihan dengan versioning system
 - **Audit Trail**: Log lengkap untuk semua regenerasi
 - **Rollback Capability**: Bisa membatalkan regenerasi jika diperlukan
 
 ### 2. Due Date Fix
+
 - **End of Month**: Jatuh tempo selalu pada akhir bulan
 - **Accurate Display**: Due date ditampilkan sesuai database
 - **Leap Year Support**: Otomatis handle tahun kabisat
 
 ### 3. Home Page Optimization
+
 - **Latest Fees Only**: Hanya menampilkan tagihan terbaru
 - **No Duplicates**: Tidak ada duplikasi tagihan regenerated
 - **Clean Interface**: Interface yang bersih dan mudah dipahami
 
 ### 4. Enhanced Security
+
 - **Rate Limiting**: Protection against brute force attacks
 - **Webhook Security**: Signature verification untuk Midtrans
 - **Security Headers**: XSS, clickjacking protection
@@ -209,11 +225,13 @@ python testing/run_security_tests.py http://localhost:8000
 ## 🚀 Deployment
 
 ### Development
+
 ```bash
 python main.py
 ```
 
 ### Production
+
 ```bash
 # 1. Run security tests
 python testing/run_security_tests.py https://your-staging-url.com
@@ -228,6 +246,7 @@ uvicorn main:app --host 0.0.0.0 --port 8000
 ## 📝 Usage Examples
 
 ### 1. Generate Iuran Bulanan (Admin)
+
 ```bash
 curl -X POST "http://localhost:8000/api/admin/generate-fees" \
   -H "Authorization: Bearer YOUR_JWT_TOKEN" \
@@ -241,6 +260,7 @@ curl -X POST "http://localhost:8000/api/admin/generate-fees" \
 ```
 
 ### 2. Regenerate Iuran (Admin)
+
 ```bash
 curl -X POST "http://localhost:8000/api/admin/regenerate-fees" \
   -H "Authorization: Bearer YOUR_JWT_TOKEN" \
@@ -254,6 +274,7 @@ curl -X POST "http://localhost:8000/api/admin/regenerate-fees" \
 ```
 
 ### 3. Buat Pembayaran
+
 ```bash
 curl -X POST "http://localhost:8000/api/payments/create" \
   -H "Authorization: Bearer YOUR_JWT_TOKEN" \
@@ -267,6 +288,7 @@ curl -X POST "http://localhost:8000/api/payments/create" \
 ## 🔧 Migration & Testing
 
 ### Database Migration
+
 ```bash
 # Migrate existing data untuk fitur baru
 python script/migrate_fee_schema.py
@@ -279,6 +301,7 @@ python script/test_due_date_fix.py
 ```
 
 ### Cleanup Test Data
+
 ```bash
 # Cleanup test data
 python script/test_regenerate_system.py --cleanup
@@ -296,14 +319,17 @@ python script/test_due_date_fix.py --cleanup
 ### Common Issues
 
 1. **Database Connection Error**
+
    - Pastikan MongoDB sudah berjalan
    - Periksa `MONGO_URL` di file `.env`
 
 2. **JWT Token Error**
+
    - Periksa `JWT_SECRET_KEY` di file `.env`
    - Restart aplikasi setelah mengubah secret key
 
 3. **Midtrans Integration Error**
+
    - Periksa `MIDTRANS_SERVER_KEY` dan `MIDTRANS_CLIENT_KEY`
    - Pastikan mode production/sandbox sudah benar
 

@@ -6,6 +6,7 @@ from datetime import datetime, timedelta, timezone
 import hashlib
 import hmac
 import logging
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -140,7 +141,7 @@ class MidtransService:
                 "payment_type": payment_request.payment_method,
                 "bank": None,  # Will be updated via webhook
                 "va_number": None,  # Will be updated via webhook
-                "expiry_time": current_time + timedelta(hours=24)  # Default 24 hours expiry
+                "expiry_time": current_time + timedelta(minutes=int(os.getenv("PAYMENT_EXPIRY_MINUTES", "30")))  # Configurable expiry time, default 30 minutes
             }
             
             await db.payments.insert_one(payment_data)
