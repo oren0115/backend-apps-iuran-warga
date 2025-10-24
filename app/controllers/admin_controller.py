@@ -78,6 +78,9 @@ class AdminController:
         approved_payments = await db.payments.count_documents({
             "$or": [{"status": "Settlement"}, {"status": "Success"}]
         })
+        failed_payments = await db.payments.count_documents({
+            "$or": [{"status": "Deny"}, {"status": "Cancel"}, {"status": "Expire"}, {"status": "Failed"}]
+        })
         
         # Calculate current month collection
         jakarta_tz = timezone(timedelta(hours=7))
@@ -114,6 +117,7 @@ class AdminController:
             "totalFees": total_fees,
             "pendingPayments": pending_payments,
             "approvedPayments": approved_payments,
+            "failedPayments": failed_payments,
             "currentMonthCollection": current_month_collection,
             "collectionRate": collection_rate,
             "monthlyFees": monthly_fees,
