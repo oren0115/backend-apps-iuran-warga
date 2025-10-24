@@ -1,7 +1,7 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, Response
 from app.config.database import init_database, close_database
-from app.routes import user_routes, fee_routes, payment_routes, notification_routes, admin_routes, websocket_routes
+from app.routes import user_routes, fee_routes, payment_routes, notification_routes, admin_routes, websocket_routes, telegram_routes
 from app.middleware import setup_cors_middleware, setup_security_middleware, setup_rate_limiting_middleware
 from app.middleware.security_middleware import add_security_headers, add_hsts_header
 import logging
@@ -63,6 +63,7 @@ app.include_router(payment_routes.router, prefix="/api", tags=["payments"])
 app.include_router(notification_routes.router, prefix="/api", tags=["notifications"])
 app.include_router(admin_routes.router, prefix="/api/admin", tags=["admin"])
 app.include_router(websocket_routes.router, prefix="/api", tags=["websocket"])
+app.include_router(telegram_routes.router, prefix="/api", tags=["telegram"])
 
 
 # Health check endpoint untuk testing
