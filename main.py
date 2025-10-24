@@ -1,12 +1,43 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, Response
 from app.config.database import init_database, close_database
 from app.routes import user_routes, fee_routes, payment_routes, notification_routes, admin_routes, websocket_routes
 from app.middleware import setup_cors_middleware, setup_security_middleware, setup_rate_limiting_middleware
 from app.middleware.security_middleware import add_security_headers, add_hsts_header
 import logging
+import os
 
-# Create the main app
-app = FastAPI(title="IPL Cluster Cannary Management API")
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
+    try:
+        await init_database()
+        logger.info("Database initialized successfully")
+    except Exception as e:
+        logger.error(f"Failed to initialize database: {e}")
+        # Don't raise exception, let app start without database for testing
+    
+    logger.info("Application started successfully")
+    yield
+    
+    # Shutdown
+    try:
+        await close_database()
+        logger.info("Database connection closed successfully")
+    except Exception as e:
+        logger.error(f"Failed to close database: {e}")
+    
+    logger.info("Application shut down successfully")
+
+# Create the main app with lifespan
+app = FastAPI(title="IPL Cluster Cannary Management API", lifespan=lifespan)
 
 
 
@@ -34,36 +65,28 @@ app.include_router(admin_routes.router, prefix="/api/admin", tags=["admin"])
 app.include_router(websocket_routes.router, prefix="/api", tags=["websocket"])
 
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
-
-@app.on_event("startup")
-async def startup_event():
-    await init_database()
+# Health check endpoint untuk testing
+@app.get("/health")
+async def health_check():
+    from app.config.database import database_manager
     
-    # Setup Telegram webhook if configured
-    # try:
-    #     from app.config.telegram import TelegramConfig
-    #     if TelegramConfig.is_configured():
-    #         from setup_telegram_webhook import TelegramWebhookSetup
-    #         setup = TelegramWebhookSetup()
-    #         await setup.set_webhook()
-    #         logger.info("Telegram webhook configured successfully")
-    #     else:
-    #         logger.warning("Telegram not configured, skipping webhook setup")
-    # except Exception as e:
-    #     logger.error(f"Failed to setup Telegram webhook: {e}")
+    database_status = "disconnected"
+    if database_manager.database:
+        try:
+            await database_manager.database.command("ping")
+            database_status = "connected"
+        except Exception as e:
+            database_status = f"error: {str(e)}"
     
-    logger.info("Application started successfully")
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    await close_database()
-    logger.info("Application shut down successfully")
+    return {
+        "status": "healthy",
+        "message": "API is running",
+        "database": database_status,
+        "environment": {
+            "mongo_url_set": bool(os.getenv("MONGO_URL")),
+            "db_name_set": bool(os.getenv("DB_NAME")),
+        }
+    }
 
 @app.get("/")
 async def root():

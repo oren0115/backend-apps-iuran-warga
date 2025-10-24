@@ -23,12 +23,31 @@ async def init_database():
     try:
         mongo_url = os.environ.get("MONGO_URL")
         database_name = os.environ.get("DB_NAME")
-        database_manager.client = AsyncIOMotorClient(mongo_url)
+        
+        if not mongo_url:
+            logger.warning("MONGO_URL not set, using default localhost")
+            mongo_url = "mongodb://localhost:27017"
+        
+        if not database_name:
+            logger.warning("DB_NAME not set, using default")
+            database_name = "rt_rw_management"
+        
+        logger.info(f"Connecting to MongoDB: {mongo_url}")
+        logger.info(f"Database name: {database_name}")
+        
+        database_manager.client = AsyncIOMotorClient(mongo_url, serverSelectionTimeoutMS=5000)
         database_manager.database = database_manager.client[database_name]
-        database_manager.database.command("ping")
+        
+        # Test connection
+        await database_manager.database.command("ping")
+        logger.info("Database connection successful")
+        
     except Exception as e:
         logger.error(f"Database connection failed: {e}")
-        raise e
+        # Don't raise exception in production, let app start without database
+        logger.warning("Continuing without database connection")
+        database_manager.client = None
+        database_manager.database = None
 
 async def close_database():
     # tutup koneksi database
