@@ -19,7 +19,7 @@ def setup_security_middleware(app: FastAPI) -> None:
             "*.onrender.com", 
             "*.ngrok-free.app",
             "https://www.iplcannary.cloud",
-            "www.iplcannary.cloud"
+            "https://iplcannary.cloud"
         ]
     )
 
