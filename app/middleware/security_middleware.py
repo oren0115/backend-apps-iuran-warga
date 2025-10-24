@@ -17,7 +17,9 @@ def setup_security_middleware(app: FastAPI) -> None:
             "127.0.0.1", 
             "*.vercel.app", 
             "*.onrender.com", 
-            "*.ngrok-free.app"
+            "*.ngrok-free.app",
+            "https://www.iplcannary.cloud",
+            "www.iplcannary.cloud"
         ]
     )
 

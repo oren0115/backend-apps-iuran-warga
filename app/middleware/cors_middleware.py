@@ -19,6 +19,8 @@ def setup_cors_middleware(app: FastAPI) -> None:
             "https://*.ngrok-free.app",
             "https://backend-apps-iuran-warga.vercel.app",
             "https://*.vercel.app",  # Allow all Vercel subdomains
+            "https://www.iplcannary.cloud",
+            "www.iplcannary.cloud"
         ],
         allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
         allow_headers=["Content-Type", "Authorization", "X-Requested-With"],
